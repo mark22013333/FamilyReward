@@ -297,22 +297,16 @@ def test_double_approve_does_not_double_points(page: Page, live_server: str) -> 
     page.get_by_role("button", name="完成 👍").first.click()
     expect(page.locator(".flash")).to_contain_text("已確認完成")
 
-    # 直接重送同一個 POST（等同快速按第二次）
-    page.evaluate(
-        """([action, token]) => {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = action;
-            const input = document.createElement('input');
-            input.name = 'csrf_token';
-            input.value = token;
-            form.appendChild(input);
-            document.body.appendChild(form);
-            form.submit();
-        }""",
-        [action, page.locator("input[name='csrf_token']").first.input_value()],
+    # 直接重送同一個 POST（等同快速按第二次）。
+    # 用 request.post 而不是在頁面裡建表單送出：後者會讓頁面停在
+    # 導航途中，下一個 goto 會被瀏覽器取消而拋 ERR_ABORTED。
+    token = page.locator("input[name='csrf_token']").first.input_value()
+    second = page.request.post(
+        f"{base_url}{action}",
+        form={"csrf_token": token},
+        headers={"Referer": f"{base_url}/admin/approvals"},
     )
-    page.wait_for_load_state()
+    assert second.status < 500, f"重複批准不該造成伺服器錯誤（{second.status}）"
 
     # 只能有一筆 +1，餘額必須是 1
     page.goto(f"{base_url}/admin/points?child_id={child_id}")

@@ -164,6 +164,8 @@ def test_change_password_clears_warning(client, login_admin):
     client.post(
         "/admin/settings",
         data={
+            # 設定頁有「改帳號」與「改密碼」兩個表單，要指明是哪一個。
+            "action": "change_password",
             "current_password": ADMIN_PASSWORD,
             "new_password": "brandNewPassword99",
             "confirm_password": "brandNewPassword99",

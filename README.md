@@ -236,6 +236,31 @@ ui:
 
 啟動時會檢查設定合法性，例如 `points_per_card` 設成 0 會直接拒絕啟動並顯示原因。
 
+### 修改連接埠（Port）
+
+改 `config\config.yaml` 的 `server.port`，然後重新啟動：
+
+```yaml
+server:
+  port: 8090     # 原本是 8080
+```
+
+改完之後：
+
+- 網址跟著變成 `http://127.0.0.1:8090`
+- 如果有啟用 Cloudflare，`cloudflare\config.yml` 的 `service` 也要改成同一個 port
+
+啟動時若偵測到該 port 已被占用，會清楚顯示訊息而不是默默失敗。
+
+### 帳號相關設定一覽
+
+| 項目 | 位置 | 何時生效 |
+|---|---|---|
+| 管理員帳號 | `config.yaml` 的 `admin.initial_username` | **只有第一次建立帳號時**；之後請在後台改 |
+| 管理員初始密碼 | `.env` 的 `ADMIN_INITIAL_PASSWORD` | **只有第一次建立帳號時**；之後請在後台改 |
+| 小孩 PIN 位數 | `config.yaml` 的 `security.child_pin_length` | 重新啟動後 |
+| 小孩 PIN | 後台 → 👧 小孩 → 修改 | 立即 |
+
 ---
 
 ## 建立 Admin
@@ -252,6 +277,26 @@ ui:
 ```
 
 修改位置：**後台 → ⚙️ 設定 → 修改管理員密碼**（至少 8 個字元）。
+
+### 修改管理員帳號
+
+**後台 → ⚙️ 設定 → 管理員帳號 → 修改帳號**，需要輸入目前的密碼確認身分。
+
+帳號只能使用英文字母、數字，以及 `.` `_` `-`，長度 3 ~ 50 個字元。
+
+> **重要：`admin.initial_username` 只在第一次建立帳號時生效**
+>
+> 系統啟動時，如果資料庫裡還沒有任何管理員，才會依 `config.yaml` 的
+> `admin.initial_username` 建立帳號。帳號建立之後，改設定檔**不會**改到既有帳號
+> —— 設定檔不應該有能力覆寫已存在的帳號。要改帳號請走上面的後台流程。
+
+### 忘記管理員帳號
+
+```bat
+.venv\Scripts\python.exe scripts\show_admin.py
+```
+
+只會顯示帳號，不會（也無法）顯示密碼 —— 密碼是 Hash，本來就取不回來。
 
 ### 小孩登入
 
@@ -1012,6 +1057,14 @@ tasklist | findstr <上面查到的 PID>
 ```
 
 從 Cloudflare 官方下載 Windows 版放進 `cloudflare\`；或在 `config\config.yaml` 把 `cloudflare.enabled` 設為 `false`。
+
+### 忘記 Admin 帳號
+
+```bat
+.venv\Scripts\python.exe scripts\show_admin.py
+```
+
+會列出目前的管理員帳號、是否仍在使用初始密碼，以及最後登入時間。
 
 ### 忘記 Admin Password
 

@@ -6,36 +6,81 @@
 <h1 class="section__title">⚙️ 設定</h1>
 
 <section class="section">
+  <h2 class="section__title">👤 管理員帳號</h2>
+  <div class="card" style="max-width: 480px;">
+    <p class="mb-md">
+      目前的帳號：<strong>{{ current_username }}</strong>
+    </p>
+
+    <form method="post" novalidate>
+      {{ username_form.hidden_tag() }}
+      {# 這一頁有兩個表單，用 action 區分是哪一個送出的 #}
+      <input type="hidden" name="action" value="change_username">
+
+      <div class="form-field">
+        <label class="form-label" for="new_username">{{ username_form.new_username.label.text }}</label>
+        <input class="form-input" type="text" id="new_username" name="new_username"
+               value="{{ username_form.new_username.data or '' }}"
+               maxlength="50" autocomplete="username" required>
+        {% if username_form.new_username.errors %}
+          <div class="form-error">{{ username_form.new_username.errors[0] }}</div>
+        {% endif %}
+        <div class="form-hint">只能使用英文字母、數字，以及 . _ - 這三種符號。</div>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="username_current_password">
+          {{ username_form.current_password.label.text }}
+        </label>
+        <input class="form-input" type="password" id="username_current_password"
+               name="current_password" autocomplete="current-password" required>
+        {% if username_form.current_password.errors %}
+          <div class="form-error">{{ username_form.current_password.errors[0] }}</div>
+        {% endif %}
+      </div>
+
+      <button class="btn btn--info" type="submit">修改帳號</button>
+      <p class="text-small text-soft mt-md mb-0">
+        修改後請用新帳號登入。<code>config\config.yaml</code> 的
+        <code>admin.initial_username</code> 只在第一次建立帳號時生效，
+        改了不會影響既有帳號。
+      </p>
+    </form>
+  </div>
+</section>
+
+<section class="section">
   <h2 class="section__title">🔐 修改管理員密碼</h2>
   <div class="card" style="max-width: 480px;">
     <form method="post" novalidate>
-      {{ form.hidden_tag() }}
+      {{ password_form.hidden_tag() }}
+      <input type="hidden" name="action" value="change_password">
 
       <div class="form-field">
-        <label class="form-label" for="current_password">{{ form.current_password.label.text }}</label>
+        <label class="form-label" for="current_password">{{ password_form.current_password.label.text }}</label>
         <input class="form-input" type="password" id="current_password" name="current_password"
                autocomplete="current-password" required>
-        {% if form.current_password.errors %}
-          <div class="form-error">{{ form.current_password.errors[0] }}</div>
+        {% if password_form.current_password.errors %}
+          <div class="form-error">{{ password_form.current_password.errors[0] }}</div>
         {% endif %}
       </div>
 
       <div class="form-field">
-        <label class="form-label" for="new_password">{{ form.new_password.label.text }}</label>
+        <label class="form-label" for="new_password">{{ password_form.new_password.label.text }}</label>
         <input class="form-input" type="password" id="new_password" name="new_password"
                autocomplete="new-password" minlength="8" required>
-        {% if form.new_password.errors %}
-          <div class="form-error">{{ form.new_password.errors[0] }}</div>
+        {% if password_form.new_password.errors %}
+          <div class="form-error">{{ password_form.new_password.errors[0] }}</div>
         {% endif %}
         <div class="form-hint">至少 8 個字元。</div>
       </div>
 
       <div class="form-field">
-        <label class="form-label" for="confirm_password">{{ form.confirm_password.label.text }}</label>
+        <label class="form-label" for="confirm_password">{{ password_form.confirm_password.label.text }}</label>
         <input class="form-input" type="password" id="confirm_password" name="confirm_password"
                autocomplete="new-password" required>
-        {% if form.confirm_password.errors %}
-          <div class="form-error">{{ form.confirm_password.errors[0] }}</div>
+        {% if password_form.confirm_password.errors %}
+          <div class="form-error">{{ password_form.confirm_password.errors[0] }}</div>
         {% endif %}
       </div>
 

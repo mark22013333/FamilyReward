@@ -22,6 +22,7 @@ from flask_login import current_user
 from ..exceptions import AppError
 from ..forms import (
     ChangePasswordForm,
+    ChangeUsernameForm,
     ChildForm,
     ConfirmForm,
     PointAdjustmentForm,
@@ -612,16 +613,34 @@ def history():  # noqa: ANN201
 
 @admin_bp.route("/settings", methods=["GET", "POST"])
 def settings_page():  # noqa: ANN201
-    form = ChangePasswordForm()
     settings = _settings()
 
-    if form.validate_on_submit():
+    # 這一頁有兩個表單（改帳號、改密碼）。用隱藏的 action 欄位區分，
+    # 否則送出其中一個時，另一個會因為欄位空白而跳出誤導的錯誤訊息。
+    action = request.form.get("action", "")
+
+    username_form = ChangeUsernameForm()
+    password_form = ChangePasswordForm()
+
+    if action == "change_username" and username_form.validate_on_submit():
+        try:
+            admin_service.change_username(
+                current_user,
+                username_form.new_username.data or "",
+                username_form.current_password.data or "",
+            )
+            flash("帳號已經修改成功！下次請用新帳號登入 🔐", "success")
+            return redirect(url_for("admin.settings_page"))
+        except AppError as exc:
+            flash(exc.message, "error")
+
+    if action == "change_password" and password_form.validate_on_submit():
         try:
             admin_service.change_password(
                 current_user,
-                form.current_password.data or "",
-                form.new_password.data or "",
-                form.confirm_password.data or "",
+                password_form.current_password.data or "",
+                password_form.new_password.data or "",
+                password_form.confirm_password.data or "",
             )
             flash("密碼已經修改成功！請記得牢記新密碼 🔐", "success")
             return redirect(url_for("admin.settings_page"))
@@ -632,11 +651,13 @@ def settings_page():  # noqa: ANN201
 
     return render_template(
         "admin/settings.html",
-        form=form,
+        username_form=username_form,
+        password_form=password_form,
         confirm_form=ConfirmForm(),
         backups=backups[:20],
         settings=settings,
         cloudflare_hostname=settings.cloudflare.hostname,
+        current_username=current_user.username,
     )
 
 

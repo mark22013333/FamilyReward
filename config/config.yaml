@@ -1,45 +1,71 @@
+# 家庭任務集點樂園 - 設定檔
+#
+# 改完這個檔案必須「重新啟動」（stop.bat 再 start.bat）才會生效。
+# 敏感資訊（金鑰、密碼）不要寫在這裡，一律放 .env。
+
 server:
+  # 服務綁定的位址。
+  # 維持 127.0.0.1 代表只有本機能連，對外由 Cloudflare Tunnel 負責。
+  # 除非你很清楚後果，否則不要改成 0.0.0.0。
   host: "127.0.0.1"
+
+  # ★ 網站的連接埠。8080 被其他程式占用時就改這裡，例如 8090。
+  #   改完之後網址也要跟著改：http://127.0.0.1:<port>
+  #   若有啟用 Cloudflare，cloudflare/config.yml 的 service 也要改成同一個 port。
   port: 8080
+
+  # 同時處理請求的執行緒數量。家庭使用 8 綽綽有餘。
   threads: 8
 
 app:
   name: "家庭任務集點樂園"
   timezone: "Asia/Taipei"
-  debug: false
-  env: "production"
+  debug: false          # 正式使用必須是 false
+  env: "production"     # production / development / testing
 
 database:
   path: "./data/family-reward.db"
 
 reward:
-  points_per_card: 10
-  allow_negative_balance: false
+  points_per_card: 10           # 幾點集滿一張集點卡
+  allow_negative_balance: false # 是否允許點數餘額變成負數
 
 security:
   session_timeout_hours: 12
-  child_pin_length: 4
-  max_login_attempts: 5
-  lockout_minutes: 5
+  child_pin_length: 4     # 小孩 PIN 的位數（3 ~ 8）
+  max_login_attempts: 5   # 連續失敗幾次會暫時鎖定
+  lockout_minutes: 5      # 鎖定多久
 
 admin:
+  # ★ 家長後台的帳號。
+  #
+  #   注意：這個值「只在第一次建立管理員時」生效。
+  #   系統啟動時如果資料庫裡還沒有任何管理員，就會用這個名稱、
+  #   搭配 .env 的 ADMIN_INITIAL_PASSWORD 建立帳號。
+  #
+  #   帳號建立之後，改這裡「不會」改到既有帳號 —— 設定檔不應該有能力
+  #   覆寫已存在的帳號。要改帳號請登入後台：
+  #       ⚙️ 設定 → 管理員帳號 → 修改帳號
+  #
+  #   忘記帳號時，可以用這個指令查詢目前的管理員帳號：
+  #       .venv\Scripts\python.exe scripts\show_admin.py
   initial_username: "admin"
 
 cloudflare:
   enabled: false
   executable: "./cloudflare/cloudflared.exe"
   config: "./cloudflare/config.yml"
-  hostname: ""
+  hostname: ""          # 例如 kids.example.com
 
 logging:
   path: "./logs/family-reward.log"
-  level: "INFO"
-  max_bytes: 10485760
-  backup_count: 5
+  level: "INFO"         # DEBUG / INFO / WARNING / ERROR
+  max_bytes: 10485760   # 單一檔案 10 MB 後輪替
+  backup_count: 5       # 保留幾個舊檔
 
 backup:
   directory: "./backup"
-  reminder_days: 7
+  reminder_days: 7      # 超過幾天沒備份就在後台提醒
 
 ui:
-  sound_enabled: false
+  sound_enabled: false  # 第一版不播音效

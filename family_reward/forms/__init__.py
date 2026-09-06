@@ -61,6 +61,26 @@ class ChildPinForm(FlaskForm):
     submit = SubmitField("開始冒險")
 
 
+class ChangeUsernameForm(FlaskForm):
+    """修改管理者帳號。需要輸入目前密碼確認身分。"""
+
+    new_username = StringField(
+        "新的帳號",
+        validators=[
+            DataRequired(message="請輸入新的帳號"),
+            Length(min=3, max=50, message="帳號長度必須介於 3 ~ 50 個字元"),
+            Regexp(
+                r"^[A-Za-z0-9._-]+$",
+                message="帳號只能使用英文字母、數字，以及 . _ - 這三種符號",
+            ),
+        ],
+    )
+    current_password = PasswordField(
+        "目前的密碼", validators=[DataRequired(message="請輸入目前的密碼確認身分")]
+    )
+    submit = SubmitField("修改帳號")
+
+
 class ChangePasswordForm(FlaskForm):
     current_password = PasswordField(
         "目前的密碼", validators=[DataRequired(message="請輸入目前的密碼")]
