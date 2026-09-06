@@ -3,21 +3,25 @@ chcp 65001 >nul 2>&1
 setlocal
 
 REM ===========================================================
-REM  家庭任務集點樂園 - 還原資料庫
-REM  還原前必須先停止系統（restore_db.py 會檢查）。
-REM  還原前會自動把目前的資料庫備份為 pre-restore-*。
+REM  Family Reward - Restore database
+REM
+REM  IMPORTANT: keep this file pure ASCII with CRLF line endings.
+REM  See scripts\msg.py for the reason.
+REM
+REM  restore_db.py refuses to run while the service is up, and
+REM  always backs up the current database as pre-restore-* first.
 REM ===========================================================
 
 cd /d "%~dp0"
 
 set "PYTHON="
-if exist "runtime\python.exe"       set "PYTHON=runtime\python.exe"
-if exist ".venv\Scripts\python.exe" set "PYTHON=.venv\Scripts\python.exe"
+if exist "runtime\python.exe"        set "PYTHON=runtime\python.exe"
+if exist ".venv\Scripts\python.exe"  set "PYTHON=.venv\Scripts\python.exe"
 
-if "%PYTHON%"=="" (
-    echo [錯誤] 找不到 Python 環境。
+if not defined PYTHON (
     echo.
-    echo 請先執行一次 start.bat 完成安裝。
+    echo [ERROR] Python environment not found.
+    echo         Please run start.bat once to complete the setup.
     echo.
     pause
     exit /b 1

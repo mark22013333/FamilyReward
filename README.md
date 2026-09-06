@@ -445,10 +445,10 @@ E2E 測試第一次執行前要安裝瀏覽器：
 
 ```
 tests/unit          ...  58 passed    服務層邏輯、點數帳本、設定驗證、DB constraint
-tests/integration   ...  87 passed    HTTP 流程、權限、後台操作、啟動器
+tests/integration   ... 112 passed    HTTP 流程、權限、後台操作、啟動器、BAT 格式
 tests/e2e           ...  10 passed    真瀏覽器走完整驗收流程
 --------------------------------------------------------------
-總計                    155 passed    （約 71 秒）
+總計                    180 passed    （約 73 秒）
 ```
 
 測試一律使用暫存資料庫，**不會**動到 `data\family-reward.db`。
@@ -1044,6 +1044,31 @@ YAML 對縮排很敏感。常見錯誤：
 ### 忘記小孩的 PIN
 
 家長登入後台 → 👧 小孩 → 修改 → 填新的 PIN → 儲存。
+
+### 雙擊 start.bat 直接閃退，或 stop.bat 出現亂碼
+
+症狀類似這樣：
+
+```
+'??璅?' 不是內部或外部命令、可執行的程式或批次檔。
+'exe" set "PYTHON' 不是內部或外部命令、可執行的程式或批次檔。
+```
+
+**原因**：`cmd.exe` 是用「系統 ANSI 代碼頁」讀取 .bat 檔本身。台灣的 Windows
+通常是 CP950（Big5），如果 .bat 檔裡有 UTF-8 中文，即使開頭寫了 `chcp 65001`
+也來不及 —— 檔案前段的位元組早就被當成 Big5 誤判，導致畫面亂碼、指令被拆壞。
+
+**解法**：本專案的 .bat 一律保持**純 ASCII + CRLF 換行**，所有中文訊息改由
+`scripts\msg.py` 輸出（那時 `chcp 65001` 已經生效）。
+
+如果你自己修改過 .bat 並加了中文，請把中文移到 `scripts\msg.py`。
+可以用這個指令檢查：
+
+```bat
+.venv\Scripts\python.exe -m pytest tests/integration/test_bat_files.py
+```
+
+另外，如果是從 Git clone 下來的，`.gitattributes` 會確保 .bat 仍然是 CRLF。
 
 ### 中文顯示亂碼
 
