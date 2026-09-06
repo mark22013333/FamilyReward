@@ -90,7 +90,7 @@ def _configure_flask(app: Flask, settings: Settings) -> None:
         SESSION_COOKIE_SAMESITE="Lax",
         # 本機以 http://127.0.0.1 使用，因此只有正式環境才要求 Secure，
         # 由 Cloudflare Tunnel 提供 HTTPS。
-        SESSION_COOKIE_SECURE=settings.is_production and settings.cloudflare.enabled,
+        SESSION_COOKIE_SECURE=settings.is_production and settings.behind_proxy,
         PERMANENT_SESSION_LIFETIME=timedelta(hours=settings.security.session_timeout_hours),
         WTF_CSRF_TIME_LIMIT=None,
         JSON_AS_ASCII=False,
@@ -105,7 +105,10 @@ def _configure_flask(app: Flask, settings: Settings) -> None:
 
     # Cloudflare Tunnel 會經過一層 Proxy，需要正確解析 X-Forwarded-*，
     # 但只信任 1 hop，不盲目相信任意 Proxy Header。
-    if settings.cloudflare.enabled:
+    #
+    # 用 behind_proxy 而不是 cloudflare.enabled：tunnel 若是註冊成
+    # Windows 服務（儀表板管理型），enabled 會是 false，但流量仍然經過 proxy。
+    if settings.behind_proxy:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=0)
 
 

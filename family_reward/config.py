@@ -123,6 +123,20 @@ class Settings:
         return self.app.env.lower() == "production"
 
     @property
+    def behind_proxy(self) -> bool:
+        """這個服務是否會經由 Cloudflare Tunnel 對外提供。
+
+        注意：不能只看 `cloudflare.enabled` —— 那個旗標的意思是
+        「要不要由 start.bat 自己啟動 cloudflared」。如果使用者把 tunnel
+        註冊成 Windows 服務（儀表板管理型），enabled 會是 false，
+        但流量「仍然」經過 Cloudflare 的 proxy。
+
+        因此只要設定了對外網域，就視為在 proxy 後面，
+        才能正確處理 X-Forwarded-Proto 並啟用 Secure cookie。
+        """
+        return self.cloudflare.enabled or bool(self.cloudflare.hostname.strip())
+
+    @property
     def sqlalchemy_uri(self) -> str:
         return "sqlite:///" + str(self.database.path).replace("\\", "/")
 

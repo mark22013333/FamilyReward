@@ -150,10 +150,23 @@
               <td>{{ settings.security.session_timeout_hours }} 小時</td></tr>
           <tr><th scope="row">備份提醒</th>
               <td>超過 {{ settings.backup.reminder_days }} 天</td></tr>
+          {# tunnel 可能由 start.bat 啟動（enabled），也可能是註冊成
+             Windows 服務的儀表板管理型（只設定 hostname）。兩種都要顯示。 #}
+          <tr><th scope="row">公開網址</th>
+              <td>
+                {% if cloudflare_hostname %}
+                  <a href="https://{{ cloudflare_hostname }}" target="_blank"
+                     rel="noopener noreferrer">https://{{ cloudflare_hostname }}</a>
+                {% else %}
+                  未設定（只能在本機使用）
+                {% endif %}
+              </td></tr>
           <tr><th scope="row">Cloudflare Tunnel</th>
               <td>
                 {% if settings.cloudflare.enabled %}
-                  已啟用{% if cloudflare_hostname %}（{{ cloudflare_hostname }}）{% endif %}
+                  由 start.bat 啟動
+                {% elif cloudflare_hostname %}
+                  由 Windows 服務啟動（儀表板管理）
                 {% else %}
                   未啟用
                 {% endif %}

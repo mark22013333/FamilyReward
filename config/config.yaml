@@ -52,10 +52,17 @@ admin:
   initial_username: "admin"
 
 cloudflare:
+  # enabled 的意思是「要不要由 start.bat 自己啟動一個 cloudflared」。
+  #
+  # 如果你的 tunnel 已經註冊成 Windows 服務（儀表板管理型），
+  # 請保持 false —— 服務會開機自動執行，不需要再多跑一個行程。
+  # 執行 cloudflare-setup.bat 可以檢查你目前屬於哪一種。
   enabled: false
   executable: "./cloudflare/cloudflared.exe"
   config: "./cloudflare/config.yml"
-  hostname: ""          # 例如 kids.example.com
+
+  # 對外的公開網址，後台設定頁會顯示。
+  hostname: "familyreward.longhopick.com"
 
 logging:
   path: "./logs/family-reward.log"

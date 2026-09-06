@@ -424,7 +424,29 @@ Internet → https://kids.example.com → Cloudflare
 
 **不需要**在路由器開 Port Forwarding，也**不需要**對外開放 Windows 的 8080。
 
-### 設定步驟
+### 先執行設定小幫手
+
+```
+cloudflare-setup.bat
+```
+
+它會檢查你目前的狀態並依情況說明接下來該做什麼。只做檢查，不會改你
+Cloudflare 上的設定。
+
+### 兩種管理方式
+
+| 方式 | 特徵 | 路由設定在哪 | `enabled` |
+|---|---|---|---|
+| **儀表板管理** | cloudflared 用 token 啟動，通常是 Windows 服務 | Cloudflare 網頁 | `false` |
+| **本機設定檔** | 由 start.bat 帶起來 | `cloudflare\config.yml` | `true` |
+
+如果你已經有其他網域在跑 tunnel（例如 `video.longhopick.com`），
+**可以共用同一個 tunnel**，只要兩個服務的 port 不同即可，
+新增路由不會中斷既有網域。
+
+詳細步驟請看 [cloudflare/README.md](cloudflare/README.md)。
+
+### 設定步驟（本機設定檔方式）
 
 1. 下載 `cloudflared.exe` 放到 `cloudflare\` 目錄
 2. 登入並建立 tunnel：
@@ -461,6 +483,14 @@ Internet → https://kids.example.com → Cloudflare
 不會因為 Tunnel 有問題就把整個網站關掉。
 
 `cloudflare\config.yml` 與 `*.json` 憑證檔含有機密資訊，**已加入 `.gitignore`，禁止提交 Git**。
+
+> **`enabled` 與 `hostname` 的差別**
+>
+> `enabled` 的意思是「要不要由 start.bat 自己啟動一個 cloudflared」。
+> 如果 tunnel 已經註冊成 Windows 服務，請保持 `false`，否則會多跑一個重複的行程。
+>
+> 但只要填了 `hostname`，系統就知道自己在 proxy 後面，會自動啟用
+> Secure cookie 並正確解析 `X-Forwarded-Proto` —— 這兩件事不依賴 `enabled`。
 
 ---
 

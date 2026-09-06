@@ -27,10 +27,26 @@ ADMIN_USERNAME = "e2eadmin"
 ADMIN_PASSWORD = "e2ePassword123"
 
 
-def _free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return sock.getsockname()[1]
+#: Chrome 會直接拒絕連線的 port（ERR_UNSAFE_PORT）。
+#: 隨機取 port 時如果剛好抽到這些，整組 E2E 都會失敗。
+#: 參考 Chromium 的 kRestrictedPorts 清單，這裡列出常見的高位 port。
+CHROME_UNSAFE_PORTS = frozenset(
+    {
+        1719, 1720, 1723, 2049, 3659, 4045, 5060, 5061, 6000,
+        6566, 6665, 6666, 6667, 6668, 6669, 6697, 10080,
+    }
+)
+
+
+def _free_port(max_attempts: int = 50) -> int:
+    """取一個沒被占用、而且 Chrome 願意連的 port。"""
+    for _ in range(max_attempts):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        if port not in CHROME_UNSAFE_PORTS:
+            return port
+    raise RuntimeError("找不到可用的 port")
 
 
 def _wait_for_server(url: str, timeout: float = 45.0) -> None:
