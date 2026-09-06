@@ -1,0 +1,80 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}{% if child %}修改小孩{% else %}新增小孩{% endif %} — {{ app_name }}{% endblock %}
+
+{% block admin_content %}
+<h1 class="section__title">
+  {% if child %}✏️ 修改「{{ child.name }}」{% else %}➕ 新增小孩{% endif %}
+</h1>
+
+<div class="card" style="max-width: 560px;">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="form-field">
+      <label class="form-label" for="name">{{ form.name.label.text }}</label>
+      <input class="form-input" type="text" id="name" name="name" maxlength="50" required
+             value="{{ form.name.data or '' }}">
+      {% if form.name.errors %}<div class="form-error">{{ form.name.errors[0] }}</div>{% endif %}
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="nickname">{{ form.nickname.label.text }}</label>
+      <input class="form-input" type="text" id="nickname" name="nickname" maxlength="50"
+             value="{{ form.nickname.data or '' }}">
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="avatar">{{ form.avatar.label.text }}</label>
+      <select class="form-select" id="avatar" name="avatar" style="font-size: 1.4rem;">
+        {% for value, label in form.avatar.choices %}
+          <option value="{{ value }}" {% if form.avatar.data == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <div class="form-hint">第一版只提供 Emoji 頭像，不需要上傳照片。</div>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="theme">{{ form.theme.label.text }}</label>
+      <select class="form-select" id="theme" name="theme">
+        {% for value, label in form.theme.choices %}
+          <option value="{{ value }}" {% if form.theme.data == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="birthday">{{ form.birthday.label.text }}</label>
+      <input class="form-input" type="date" id="birthday" name="birthday"
+             value="{{ form.birthday.data.isoformat() if form.birthday.data else '' }}">
+      <div class="form-hint">生日當天會在小朋友的畫面顯示祝賀訊息。</div>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="pin">
+        PIN（{{ pin_length }} 位數字）{% if child %}　— 留空代表不修改{% endif %}
+      </label>
+      <input class="form-input" type="text" id="pin" name="pin"
+             inputmode="numeric" pattern="[0-9]*" maxlength="{{ pin_length }}"
+             autocomplete="off" {% if not child %}required{% endif %}>
+      {% if form.pin.errors %}<div class="form-error">{{ form.pin.errors[0] }}</div>{% endif %}
+      <div class="form-hint">PIN 以 Hash 儲存，系統不會保存明碼。</div>
+    </div>
+
+    {% if child %}
+      <div class="form-field">
+        <label class="checkbox-row">
+          <input type="checkbox" name="active" value="y"
+                 {% if form.active.data %}checked{% endif %}>
+          <span>啟用中</span>
+        </label>
+      </div>
+    {% endif %}
+
+    <div class="row mt-md">
+      <button class="btn" type="submit">儲存</button>
+      <a class="btn btn--ghost" href="{{ url_for('admin.children') }}">取消</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

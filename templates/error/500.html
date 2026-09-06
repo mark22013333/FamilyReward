@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}系統跌了一跤 — {{ app_name }}{% endblock %}
+{% block content %}
+<div class="card text-center empty-state animate-pop-in">
+  <span class="empty-state__icon" aria-hidden="true">😵</span>
+  <h1>系統剛剛跌了一跤</h1>
+  {# 只顯示友善文案；Traceback / SQL / 路徑只寫進 log。 #}
+  <p>{% if message %}{{ message }}{% else %}資料應該還好好的，請再試一次看看。{% endif %}</p>
+  <a class="btn mt-md" href="{{ url_for('public.index') }}">回首頁</a>
+</div>
+{% endblock %}

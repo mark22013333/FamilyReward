@@ -1,0 +1,65 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}{% if reward %}修改禮物{% else %}新增禮物{% endif %} — {{ app_name }}{% endblock %}
+
+{% block admin_content %}
+<h1 class="section__title">
+  {% if reward %}✏️ 修改「{{ reward.name }}」{% else %}➕ 新增禮物{% endif %}
+</h1>
+
+<div class="card" style="max-width: 560px;">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="form-field">
+      <label class="form-label" for="name">{{ form.name.label.text }}</label>
+      <input class="form-input" type="text" id="name" name="name" maxlength="100" required
+             value="{{ form.name.data or '' }}">
+      {% if form.name.errors %}<div class="form-error">{{ form.name.errors[0] }}</div>{% endif %}
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="icon">{{ form.icon.label.text }}</label>
+      <input class="form-input" type="text" id="icon" name="icon" maxlength="8"
+             value="{{ form.icon.data or '🎁' }}" style="font-size: 1.3rem;">
+      <div class="form-hint">例如：🍦 🎮 🍿 🧸 🍕 🎡</div>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="description">{{ form.description.label.text }}</label>
+      <textarea class="form-textarea" id="description" name="description"
+                maxlength="500">{{ form.description.data or '' }}</textarea>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="points_required">{{ form.points_required.label.text }}</label>
+      <input class="form-input" type="number" id="points_required" name="points_required"
+             min="1" max="10000" required value="{{ form.points_required.data or 10 }}">
+      {% if form.points_required.errors %}
+        <div class="form-error">{{ form.points_required.errors[0] }}</div>
+      {% endif %}
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="quantity">{{ form.quantity.label.text }}</label>
+      <input class="form-input" type="number" id="quantity" name="quantity" min="0"
+             value="{{ form.quantity.data if form.quantity.data is not none else '' }}">
+      <div class="form-hint">留空 = 無限次；填 2 = 最多兌換兩次。</div>
+    </div>
+
+    {% if reward %}
+      <div class="form-field">
+        <label class="checkbox-row">
+          <input type="checkbox" name="active" value="y" {% if form.active.data %}checked{% endif %}>
+          <span>啟用中</span>
+        </label>
+      </div>
+    {% endif %}
+
+    <div class="row mt-md">
+      <button class="btn" type="submit">儲存</button>
+      <a class="btn btn--ghost" href="{{ url_for('admin.rewards') }}">取消</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}{{ target.strftime('%Y/%m/%d') }} — {{ app_name }}{% endblock %}
+{% block body_attrs %} data-theme="{{ child.theme }}"{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/child.css') }}">
+{% endblock %}
+
+{% block nav %}{% include "components/child_nav.html" %}{% endblock %}
+
+{% block content %}
+<h1 class="section__title">📅 {{ target.strftime('%Y/%m/%d') }}</h1>
+
+<div class="card">
+  {% if assignments %}
+    <div class="stack stack--sm">
+      {% for assignment in assignments %}
+        <div class="ledger-item">
+          <span aria-hidden="true" style="font-size: 1.5rem;">{{ assignment.task_icon_snapshot }}</span>
+          <div style="flex: 1; min-width: 0;">
+            <div class="text-bold">{{ assignment.task_title_snapshot }}</div>
+            <div class="text-small text-soft">
+              {% if assignment.status == AssignmentStatus.APPROVED.value %}
+                ✅ 完成
+              {% elif assignment.status == AssignmentStatus.WAITING_APPROVAL.value %}
+                ⏳ 等爸爸媽媽確認
+              {% elif assignment.status == AssignmentStatus.REJECTED.value %}
+                💪 再努力一下
+              {% else %}
+                ⭕ 還沒完成
+              {% endif %}
+            </div>
+          </div>
+          <span class="ledger-item__points {% if assignment.earned_points > 0 %}ledger-item__points--plus{% endif %}">
+            {% if assignment.earned_points > 0 %}+{{ assignment.earned_points }}{% else %}—{% endif %}
+          </span>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="row row--between mt-md" style="border-top: 2px solid var(--border-soft); padding-top: var(--space-md);">
+      <span class="text-bold">今日總共</span>
+      <span class="text-bold" style="font-size: 1.2rem;">+{{ earned }} ⭐</span>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <span class="empty-state__icon" aria-hidden="true">🌤️</span>
+      <p>這一天沒有安排任務喔</p>
+    </div>
+  {% endif %}
+</div>
+
+<div class="text-center mt-md">
+  <a class="btn btn--ghost"
+     href="{{ url_for('child.calendar', year=target.year, month=target.month) }}">← 回到行事曆</a>
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+/* 後台專用樣式 */
+
+.stat-tile {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  text-align: center;
+}
+
+.stat-tile__value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.stat-tile__label {
+  color: var(--text-soft);
+  font-size: 0.88rem;
+}
+
+.approval-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.approval-item__body { flex: 1 1 200px; min-width: 0; }
+
+.approval-item__actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 700px) {
+  .approval-item__actions { flex: 0 0 auto; }
+}
+
+.inline-form { display: inline-flex; gap: var(--space-xs); align-items: center; }
+
+/* 退回表單：手機上輸入框與按鈕各佔一行，避免文字被壓縮到看不清楚。 */
+.reject-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  flex: 1 1 100%;
+}
+
+.reject-form .form-input {
+  width: 100%;
+  min-height: 44px;
+}
+
+.reject-form button { width: 100%; }
+
+@media (min-width: 700px) {
+  .reject-form {
+    flex-direction: row;
+    align-items: center;
+  }
+  .reject-form .form-input { flex: 1 1 200px; width: auto; }
+  .reject-form button { width: auto; }
+}

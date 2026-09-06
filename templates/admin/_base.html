@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+
+{% block body_class %}admin-body{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block nav %}
+<header class="topbar">
+  <div class="topbar__inner">
+    <a class="topbar__brand" href="{{ url_for('admin.dashboard') }}">
+      <span aria-hidden="true">⭐</span>
+      <span>{{ app_name }}　家長後台</span>
+    </a>
+    <form method="post" action="{{ url_for('auth.admin_logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn--ghost btn--small" type="submit">登出</button>
+    </form>
+  </div>
+</header>
+
+{% set admin_items = [
+  ('admin.dashboard',   '📊', '首頁',     0),
+  ('admin.children',    '👧', '小孩',     0),
+  ('admin.tasks',       '📋', '任務',     0),
+  ('admin.approvals',   '✅', '待確認',   pending_task_count),
+  ('admin.rewards',     '🎁', '禮物',     0),
+  ('admin.redemptions', '🎀', '兌換',     pending_reward_count),
+  ('admin.points',      '⭐', '點數',     0),
+  ('admin.history',     '📜', '歷史紀錄', 0),
+  ('admin.settings_page', '⚙️', '設定',   0)
+] %}
+
+<nav class="admin-nav" aria-label="後台選單">
+  <div class="admin-nav__inner">
+    {% for endpoint, icon, label, count in admin_items %}
+      <a class="admin-nav__item" href="{{ url_for(endpoint) }}"
+         {% if request.endpoint == endpoint %}aria-current="page"{% endif %}>
+        <span aria-hidden="true">{{ icon }}</span>
+        <span>{{ label }}</span>
+        {% if count and count > 0 %}
+          <span class="badge badge--danger">{{ count }}</span>
+        {% endif %}
+      </a>
+    {% endfor %}
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+  {% if must_change_password %}
+    <div class="alert alert--warning">
+      <span aria-hidden="true">⚠️</span>
+      <div>
+        <strong>目前仍使用初始管理員密碼，請立即修改。</strong>
+        <div class="mt-md">
+          <a class="btn btn--small btn--info" href="{{ url_for('admin.settings_page') }}">
+            前往修改密碼
+          </a>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  {% block admin_content %}{% endblock %}
+{% endblock %}

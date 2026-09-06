@@ -1,0 +1,31 @@
+{# 小孩的上方列 + 底部導覽（手機為 Bottom Navigation） #}
+
+<header class="topbar">
+  <div class="topbar__inner">
+    <a class="topbar__brand" href="{{ url_for('child.dashboard') }}">
+      <span aria-hidden="true">{{ child.avatar }}</span>
+      <span>{{ child.display_name }}</span>
+    </a>
+    <form method="post" action="{{ url_for('auth.child_logout') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn--ghost btn--small" type="submit">掰掰 👋</button>
+    </form>
+  </div>
+</header>
+
+{% set nav_items = [
+  ('child.dashboard', '🏠', '今天'),
+  ('child.calendar',  '📅', '行事曆'),
+  ('child.rewards',   '🎁', '禮物'),
+  ('child.history',   '⭐', '我的紀錄')
+] %}
+
+<nav class="bottom-nav" aria-label="主選單">
+  {% for endpoint, icon, label in nav_items %}
+    <a class="bottom-nav__item" href="{{ url_for(endpoint) }}"
+       {% if request.endpoint and request.endpoint.startswith(endpoint) %}aria-current="page"{% endif %}>
+      <span class="bottom-nav__icon" aria-hidden="true">{{ icon }}</span>
+      <span>{{ label }}</span>
+    </a>
+  {% endfor %}
+</nav>

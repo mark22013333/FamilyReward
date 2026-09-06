@@ -1,0 +1,77 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}禮物管理 — {{ app_name }}{% endblock %}
+
+{% block admin_content %}
+<div class="row row--between mb-md">
+  <h1 class="section__title mb-0">🎁 禮物管理</h1>
+  <a class="btn" href="{{ url_for('admin.create_reward') }}">＋ 新增禮物</a>
+</div>
+
+{% if rewards %}
+  <div class="table-wrap">
+    <table class="table">
+      <caption class="visually-hidden">禮物清單</caption>
+      <thead>
+        <tr>
+          <th scope="col">禮物</th>
+          <th scope="col">需要點數</th>
+          <th scope="col">數量</th>
+          <th scope="col">狀態</th>
+          <th scope="col">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for reward in rewards %}
+          <tr>
+            <td>
+              <div class="text-bold">{{ reward.icon }} {{ reward.name }}</div>
+              {% if reward.description %}
+                <div class="text-small text-soft">{{ reward.description }}</div>
+              {% endif %}
+            </td>
+            <td class="text-bold">{{ reward.points_required }} ⭐</td>
+            <td>
+              {% if reward.is_unlimited %}
+                <span class="badge badge--muted">無限</span>
+              {% elif reward.quantity > 0 %}
+                {{ reward.quantity }}
+              {% else %}
+                <span class="badge badge--danger">已換完</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if reward.active %}
+                <span class="badge badge--success">✅ 使用中</span>
+              {% else %}
+                <span class="badge badge--muted">已收起</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="row" style="gap: var(--space-xs);">
+                <a class="btn btn--small btn--ghost"
+                   href="{{ url_for('admin.edit_reward', reward_id=reward.id) }}">修改</a>
+                {% if reward.active %}
+                  <form method="post"
+                        action="{{ url_for('admin.deactivate_reward', reward_id=reward.id) }}"
+                        class="inline-form" data-once
+                        onsubmit="return confirm('確定要收起禮物「{{ reward.name }}」嗎？');">
+                    {{ form.hidden_tag() }}
+                    <button class="btn btn--small btn--ghost" type="submit">收起</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="card empty-state">
+    <span class="empty-state__icon" aria-hidden="true">🎁</span>
+    <p class="text-bold">禮物櫃還是空的</p>
+    <a class="btn mt-md" href="{{ url_for('admin.create_reward') }}">放入第一個禮物</a>
+  </div>
+{% endif %}
+{% endblock %}

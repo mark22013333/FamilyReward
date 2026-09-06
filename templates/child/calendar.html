@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}行事曆 — {{ app_name }}{% endblock %}
+{% block body_attrs %} data-theme="{{ child.theme }}"{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/child.css') }}">
+{% endblock %}
+
+{% block nav %}{% include "components/child_nav.html" %}{% endblock %}
+
+{% block content %}
+{% set prev_month = 12 if month == 1 else month - 1 %}
+{% set prev_year = year - 1 if month == 1 else year %}
+{% set next_month = 1 if month == 12 else month + 1 %}
+{% set next_year = year + 1 if month == 12 else year %}
+
+<h1 class="section__title">📅 行事曆</h1>
+
+<div class="card">
+  <div class="row row--between mb-md">
+    <a class="btn btn--ghost btn--small"
+       href="{{ url_for('child.calendar', year=prev_year, month=prev_month) }}"
+       aria-label="上一個月">←</a>
+    <h2 class="mb-0">{{ year }} 年 {{ month }} 月</h2>
+    <a class="btn btn--ghost btn--small"
+       href="{{ url_for('child.calendar', year=next_year, month=next_month) }}"
+       aria-label="下一個月">→</a>
+  </div>
+
+  <p class="text-small text-soft" data-calendar-status>正在整理你的星星紀錄… ⭐</p>
+
+  <div class="calendar-grid"
+       data-calendar
+       data-year="{{ year }}"
+       data-month="{{ month }}"
+       data-today="{{ today.isoformat() }}"
+       data-day-url="{{ url_for('child.calendar_day', day='') }}"></div>
+</div>
+
+<p class="text-small text-soft text-center mt-md">點一下某一天就可以看那天做了什麼喔！</p>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/calendar.js') }}" defer></script>
+{% endblock %}

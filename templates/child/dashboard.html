@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}今天的任務 — {{ app_name }}{% endblock %}
+{% block body_attrs %} data-theme="{{ child.theme }}"{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/child.css') }}">
+{% endblock %}
+
+{% block nav %}{% include "components/child_nav.html" %}{% endblock %}
+
+{% block content %}
+
+{# 家長批准後的一次性慶祝畫面。通知在後端已標記已讀，重新整理不會重播。 #}
+{% for note in notifications %}
+  <div class="celebrate" {% if loop.first %}data-celebrate="{{ note.points or 1 }}"{% endif %}>
+    <div class="celebrate__title">{{ note.title }}</div>
+    <p>{{ note.message }}</p>
+    {% if note.points %}
+      <div class="celebrate__points">
+        {% if note.points > 0 %}+{{ note.points }}{% else %}{{ note.points }}{% endif %} ⭐
+      </div>
+    {% endif %}
+  </div>
+{% endfor %}
+
+<div class="greeting">
+  <div class="greeting__hello">嗨，{{ child.display_name }} 👋</div>
+  <div class="greeting__date">今天是 {{ today | friendly_date }}</div>
+  <div class="greeting__cheer">今天也一起完成任務吧！🌟</div>
+</div>
+
+{% if child.is_birthday(today) %}
+  <div class="birthday-banner animate-pop-in mb-md">🎂 今天是你的生日！生日快樂！</div>
+{% endif %}
+
+{% if streak >= 2 %}
+  <div class="streak-banner mb-md">🔥 已經連續 {{ streak }} 天完成所有任務！</div>
+{% endif %}
+
+<section class="section">
+  <div class="card star-balance">
+    <span class="star-balance__icon animate-star-pulse" aria-hidden="true">⭐</span>
+    <div>
+      <div class="text-soft text-small">我的星星</div>
+      <div class="big-number">{{ balance }}</div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  {% include "components/points_card.html" %}
+</section>
+
+<section class="section">
+  <h2 class="section__title">📋 今天的任務</h2>
+
+  {% if progress.total > 0 %}
+    <div class="card mb-md">
+      <div class="row row--between">
+        <span class="text-bold">今日進度</span>
+        <span class="text-bold">{{ progress.approved }} / {{ progress.total }}　{{ progress.percent }}%</span>
+      </div>
+      <div class="progress mt-md">
+        <div class="progress__bar" style="width: {{ progress.percent }}%"></div>
+      </div>
+      {% if progress.waiting > 0 %}
+        <p class="text-small text-soft mt-md mb-0">
+          ⏳ 有 {{ progress.waiting }} 個任務正在等爸爸媽媽確認
+        </p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  {% if assignments %}
+    <div class="stack stagger">
+      {% for assignment in assignments %}
+        {% include "components/task_card.html" %}
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card empty-state">
+      <span class="empty-state__icon" aria-hidden="true">🎉</span>
+      <p class="text-bold">今天的事情都完成啦！</p>
+      <p>現在可以好好休息一下囉～</p>
+    </div>
+  {% endif %}
+</section>
+
+{% if next_reward %}
+<section class="section">
+  <h2 class="section__title">🎁 下一個禮物</h2>
+  <div class="card card--hoverable">
+    <div class="task-card">
+      <span class="task-card__icon" aria-hidden="true">{{ next_reward.icon }}</span>
+      <div class="task-card__body">
+        <div class="task-card__title">{{ next_reward.name }}</div>
+        <div class="text-small text-soft">需要 {{ next_reward.points_required }} ⭐</div>
+      </div>
+      <div class="task-card__action">
+        {% if balance >= next_reward.points_required %}
+          <a class="btn btn--success btn--block" href="{{ url_for('child.rewards') }}">
+            你現在已經可以兌換囉！
+          </a>
+        {% else %}
+          <span class="badge badge--muted">
+            🔒 還差 {{ next_reward.points_required - balance }} ⭐
+          </span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% endblock %}
+
+{% block bottom_nav %}{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/animations.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/task.js') }}" defer></script>
+{% endblock %}

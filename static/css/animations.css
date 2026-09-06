@@ -1,0 +1,128 @@
+/* 動畫。整體維持 300ms ~ 1000ms，有動感但不吵。 */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(0.7); }
+  70%  { transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes starPulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.18); }
+}
+
+@keyframes checkPop {
+  0%   { transform: scale(0) rotate(-30deg); opacity: 0; }
+  60%  { transform: scale(1.25) rotate(6deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+@keyframes confettiFall {
+  0%   { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+}
+
+@keyframes flyToCard {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  70%  { opacity: 1; }
+  100% { transform: translate(var(--fly-x, 0), var(--fly-y, -160px)) scale(0.4); opacity: 0; }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25%      { transform: translateX(-6px); }
+  75%      { transform: translateX(6px); }
+}
+
+.animate-fade-in-up { animation: fadeInUp var(--duration-base) ease both; }
+.animate-pop-in     { animation: popIn var(--duration-base) var(--ease-bounce) both; }
+.animate-star-pulse { animation: starPulse 1.2s ease-in-out infinite; }
+.animate-check-pop  { animation: checkPop var(--duration-base) var(--ease-bounce) both; }
+.animate-shake      { animation: shake var(--duration-base) ease; }
+
+/* 依序淡入，讓列表有節奏感 */
+.stagger > * { animation: fadeInUp var(--duration-base) ease both; }
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 60ms; }
+.stagger > *:nth-child(3) { animation-delay: 120ms; }
+.stagger > *:nth-child(4) { animation-delay: 180ms; }
+.stagger > *:nth-child(5) { animation-delay: 240ms; }
+.stagger > *:nth-child(6) { animation-delay: 300ms; }
+.stagger > *:nth-child(n+7) { animation-delay: 360ms; }
+
+/* ---- Confetti ---- */
+
+.confetti-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 100;
+}
+
+.confetti-piece {
+  position: absolute;
+  width: 10px;
+  height: 14px;
+  border-radius: 2px;
+  animation: confettiFall linear forwards;
+}
+
+/* ---- 飛向集點卡的星星 ---- */
+
+.flying-star {
+  position: fixed;
+  font-size: 1.8rem;
+  pointer-events: none;
+  z-index: 90;
+  animation: flyToCard var(--duration-slow) var(--ease-bounce) forwards;
+}
+
+/* ---- 慶祝橫幅 ---- */
+
+.celebrate {
+  background: linear-gradient(135deg, #FFF4D6, #FFE1E9);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  text-align: center;
+  margin-bottom: var(--space-md);
+  animation: popIn var(--duration-base) var(--ease-bounce) both;
+}
+
+.celebrate__title { font-size: 1.4rem; font-weight: 800; }
+.celebrate__points {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+}
+
+/* ---- 尊重使用者的減少動態偏好 ----
+   關閉 Confetti、飛星與所有 transform 動畫。 */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .confetti-layer,
+  .flying-star {
+    display: none !important;
+  }
+
+  .card--hoverable:hover,
+  .child-tile:hover,
+  .btn:hover {
+    transform: none;
+  }
+}

@@ -1,0 +1,143 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}{% if task %}修改任務{% else %}新增任務{% endif %} — {{ app_name }}{% endblock %}
+
+{% block admin_content %}
+<h1 class="section__title">
+  {% if task %}✏️ 修改「{{ task.title }}」{% else %}➕ 新增任務{% endif %}
+</h1>
+
+<div class="card" style="max-width: 620px;">
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="form-field">
+      <label class="form-label" for="title">{{ form.title.label.text }}</label>
+      <input class="form-input" type="text" id="title" name="title" maxlength="100" required
+             value="{{ form.title.data or '' }}">
+      {% if form.title.errors %}<div class="form-error">{{ form.title.errors[0] }}</div>{% endif %}
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="icon">{{ form.icon.label.text }}</label>
+      <input class="form-input" type="text" id="icon" name="icon" maxlength="8"
+             value="{{ form.icon.data or '⭐' }}" style="font-size: 1.3rem;">
+      <div class="form-hint">例如：🪥 📚 🧸 🗑️ 🛏️ 🚿</div>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="description">{{ form.description.label.text }}</label>
+      <textarea class="form-textarea" id="description" name="description"
+                maxlength="500">{{ form.description.data or '' }}</textarea>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="category">{{ form.category.label.text }}</label>
+      <select class="form-select" id="category" name="category">
+        {% for value, label in form.category.choices %}
+          <option value="{{ value }}" {% if form.category.data == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="points">{{ form.points.label.text }}</label>
+      <input class="form-input" type="number" id="points" name="points"
+             min="1" max="100" required value="{{ form.points.data or 1 }}">
+      {% if form.points.errors %}<div class="form-error">{{ form.points.errors[0] }}</div>{% endif %}
+    </div>
+
+    <div class="form-field">
+      <label class="checkbox-row">
+        <input type="checkbox" name="required" value="y" {% if form.required.data %}checked{% endif %}>
+        <span>{{ form.required.label.text }}</span>
+      </label>
+      <div class="form-hint">「連續達成天數」只計算必做任務。</div>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label">{{ form.child_ids.label.text }}</label>
+      <div class="weekday-picker">
+        {% for value, label in form.child_ids.choices %}
+          <label class="weekday-chip">
+            <input type="checkbox" name="child_ids" value="{{ value }}"
+                   {% if form.child_ids.data and value in form.child_ids.data %}checked{% endif %}>
+            <span>{{ label }}</span>
+          </label>
+        {% else %}
+          <p class="text-soft">請先建立小朋友資料。</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label class="form-label" for="repeat_type">{{ form.repeat_type.label.text }}</label>
+      <select class="form-select" id="repeat_type" name="repeat_type" data-repeat-select>
+        {% for value, label in form.repeat_type.choices %}
+          <option value="{{ value }}" {% if form.repeat_type.data == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-field" data-weekday-field>
+      <label class="form-label">{{ form.weekdays.label.text }}</label>
+      <div class="weekday-picker">
+        {% for value, label in form.weekdays.choices %}
+          <label class="weekday-chip">
+            <input type="checkbox" name="weekdays" value="{{ value }}"
+                   {% if form.weekdays.data and value in form.weekdays.data %}checked{% endif %}>
+            <span>{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      <div class="form-hint">選「每週一次」或「自訂星期」時才需要設定。</div>
+    </div>
+
+    <div class="grid grid--2">
+      <div class="form-field">
+        <label class="form-label" for="start_date">{{ form.start_date.label.text }}</label>
+        <input class="form-input" type="date" id="start_date" name="start_date"
+               value="{{ form.start_date.data.isoformat() if form.start_date.data else '' }}">
+      </div>
+      <div class="form-field">
+        <label class="form-label" for="end_date">{{ form.end_date.label.text }}</label>
+        <input class="form-input" type="date" id="end_date" name="end_date"
+               value="{{ form.end_date.data.isoformat() if form.end_date.data else '' }}">
+      </div>
+    </div>
+
+    {% if task %}
+      <div class="form-field">
+        <label class="checkbox-row">
+          <input type="checkbox" name="active" value="y" {% if form.active.data %}checked{% endif %}>
+          <span>啟用中</span>
+        </label>
+      </div>
+    {% endif %}
+
+    <div class="row mt-md">
+      <button class="btn" type="submit">儲存</button>
+      <a class="btn btn--ghost" href="{{ url_for('admin.tasks') }}">取消</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    "use strict";
+    var select = document.querySelector("[data-repeat-select]");
+    var field = document.querySelector("[data-weekday-field]");
+    if (!select || !field) { return; }
+
+    function sync() {
+      var needsWeekday = select.value === "WEEKLY" || select.value === "CUSTOM";
+      field.hidden = !needsWeekday;
+    }
+
+    select.addEventListener("change", sync);
+    sync();
+  })();
+</script>
+{% endblock %}

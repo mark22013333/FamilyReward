@@ -1,0 +1,24 @@
+# Cloudflare Tunnel 設定範本
+#
+# 使用步驟：
+#   1. 下載 cloudflared.exe 放到這個 cloudflare\ 目錄
+#   2. cloudflared tunnel login
+#   3. cloudflared tunnel create family-reward
+#      → 會產生 <TUNNEL_ID>.json 憑證檔，也放在這個目錄
+#   4. cloudflared tunnel route dns family-reward kids.example.com
+#   5. 把這個檔案複製成 config.yml，填入你自己的 TUNNEL_ID 與網域
+#   6. 在 config\config.yaml 把 cloudflare.enabled 設為 true
+#
+# 注意：<TUNNEL_ID>.json 與 config.yml 都含有憑證資訊，
+#       已經加入 .gitignore，禁止提交 Git。
+
+tunnel: YOUR_TUNNEL_ID
+credentials-file: C:/family-reward/cloudflare/YOUR_TUNNEL_ID.json
+
+ingress:
+  # 對外的網域 → 本機的 Waitress
+  - hostname: kids.example.com
+    service: http://127.0.0.1:8080
+
+  # 其他請求一律 404
+  - service: http_status:404

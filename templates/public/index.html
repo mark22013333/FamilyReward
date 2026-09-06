@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}{{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="text-center section">
+  <h1>{{ app_name }} ⭐</h1>
+  <p class="text-soft">今天是誰要開始冒險呢？ 🌈</p>
+</div>
+
+{% if children %}
+  <div class="child-picker stagger">
+    {% for child in children %}
+      <a class="child-tile" href="{{ url_for('auth.child_login', child_id=child.id) }}">
+        <span class="child-tile__avatar" aria-hidden="true">{{ child.avatar }}</span>
+        <span>{{ child.display_name }}</span>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card empty-state">
+    <span class="empty-state__icon" aria-hidden="true">👋</span>
+    <p class="text-bold">還沒有小朋友的資料喔</p>
+    <p>請爸爸媽媽先到家長後台建立小朋友的帳號吧！</p>
+  </div>
+{% endif %}
+
+<div class="text-center mt-lg">
+  <a class="btn btn--ghost" href="{{ url_for('auth.admin_login') }}">🔐 家長後台</a>
+</div>
+{% endblock %}

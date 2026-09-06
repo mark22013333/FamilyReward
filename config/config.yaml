@@ -1,0 +1,45 @@
+server:
+  host: "127.0.0.1"
+  port: 8080
+  threads: 8
+
+app:
+  name: "家庭任務集點樂園"
+  timezone: "Asia/Taipei"
+  debug: false
+  env: "production"
+
+database:
+  path: "./data/family-reward.db"
+
+reward:
+  points_per_card: 10
+  allow_negative_balance: false
+
+security:
+  session_timeout_hours: 12
+  child_pin_length: 4
+  max_login_attempts: 5
+  lockout_minutes: 5
+
+admin:
+  initial_username: "admin"
+
+cloudflare:
+  enabled: false
+  executable: "./cloudflare/cloudflared.exe"
+  config: "./cloudflare/config.yml"
+  hostname: ""
+
+logging:
+  path: "./logs/family-reward.log"
+  level: "INFO"
+  max_bytes: 10485760
+  backup_count: 5
+
+backup:
+  directory: "./backup"
+  reminder_days: 7
+
+ui:
+  sound_enabled: false

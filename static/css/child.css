@@ -1,0 +1,55 @@
+/* 小孩專用樣式 */
+
+.greeting {
+  padding: var(--space-md) 0 var(--space-sm);
+}
+
+.greeting__hello {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.greeting__date {
+  color: var(--text-soft);
+  font-size: 0.95rem;
+}
+
+.greeting__cheer {
+  margin-top: var(--space-xs);
+  font-size: 1rem;
+}
+
+.star-balance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  text-align: center;
+}
+
+.star-balance__icon { font-size: 2.6rem; }
+
+.streak-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: #FFF1E0;
+  border: 1px solid #F5D9B5;
+  border-radius: var(--radius-pill);
+  font-weight: 700;
+  color: #9A5B00;
+  justify-content: center;
+}
+
+.birthday-banner {
+  background: linear-gradient(135deg, #FFE9F2, #FFF6D6);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+}

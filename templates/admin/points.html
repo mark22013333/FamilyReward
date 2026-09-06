@@ -1,0 +1,129 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}點數管理 — {{ app_name }}{% endblock %}
+
+{% block admin_content %}
+<h1 class="section__title">⭐ 點數管理</h1>
+
+<div class="alert alert--info">
+  <span aria-hidden="true">ℹ️</span>
+  <div>
+    <strong>目前點數</strong>（可以花的）＝所有交易加總，用來兌換禮物。<br>
+    <strong>歷史取得</strong>（Lifetime Earned）＝只計算 EARN／BONUS，用來算集點卡，
+    兌換禮物不會讓它倒退。
+  </div>
+</div>
+
+<section class="section">
+  <h2 class="section__title">📊 每位小朋友</h2>
+  <div class="table-wrap">
+    <table class="table">
+      <caption class="visually-hidden">點數總覽</caption>
+      <thead>
+        <tr>
+          <th scope="col">小朋友</th>
+          <th scope="col">目前點數</th>
+          <th scope="col">歷史取得</th>
+          <th scope="col">集點卡</th>
+          <th scope="col">明細</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in summary %}
+          <tr>
+            <td>{{ row.child.avatar }} {{ row.child.name }}</td>
+            <td class="text-bold">{{ row.balance }} ⭐</td>
+            <td>{{ row.lifetime }} ⭐</td>
+            <td>
+              完成 {{ row.card.completed_cards }} 張
+              <div class="text-small text-soft">
+                目前 {{ row.card.current_points }} / {{ row.card.points_per_card }}
+              </div>
+            </td>
+            <td>
+              <a class="btn btn--small btn--ghost"
+                 href="{{ url_for('admin.points', child_id=row.child.id) }}">查看</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="section">
+  <h2 class="section__title">✏️ 手動調整點數</h2>
+  <div class="card" style="max-width: 560px;">
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="form-field">
+        <label class="form-label" for="child_id">{{ form.child_id.label.text }}</label>
+        <select class="form-select" id="child_id" name="child_id" required>
+          {% for value, label in form.child_id.choices %}
+            <option value="{{ value }}" {% if form.child_id.data == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="points">{{ form.points.label.text }}</label>
+        <input class="form-input" type="number" id="points" name="points" required
+               min="-1000" max="1000" value="{{ form.points.data or '' }}">
+        {% if form.points.errors %}<div class="form-error">{{ form.points.errors[0] }}</div>{% endif %}
+        <div class="form-hint">例如：+5（主動幫忙）、-2（修正昨天錯誤加點）</div>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="reason">{{ form.reason.label.text }}</label>
+        <input class="form-input" type="text" id="reason" name="reason" maxlength="200" required
+               value="{{ form.reason.data or '' }}">
+        {% if form.reason.errors %}<div class="form-error">{{ form.reason.errors[0] }}</div>{% endif %}
+      </div>
+
+      <button class="btn" type="submit">送出調整</button>
+      <p class="text-small text-soft mt-md mb-0">
+        每次調整都會寫入帳本與稽核紀錄，不會直接修改小朋友的點數欄位。
+        預設不允許把餘額扣成負數。
+      </p>
+    </form>
+  </div>
+</section>
+
+{% if selected_id %}
+<section class="section">
+  <h2 class="section__title">📜 點數明細</h2>
+  {% if transactions %}
+    <div class="table-wrap">
+      <table class="table">
+        <caption class="visually-hidden">點數明細</caption>
+        <thead>
+          <tr>
+            <th scope="col">時間</th>
+            <th scope="col">類型</th>
+            <th scope="col">點數</th>
+            <th scope="col">說明</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for transaction in transactions %}
+            <tr>
+              <td class="text-small">{{ transaction.created_at | local_datetime }}</td>
+              <td><span class="badge badge--muted">{{ transaction.transaction_type }}</span></td>
+              <td class="text-bold {% if transaction.points > 0 %}ledger-item__points--plus{% else %}ledger-item__points--minus{% endif %}">
+                {{ transaction.signed_points }}
+              </td>
+              <td>{{ transaction.description }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="card empty-state">
+      <p class="text-soft">這位小朋友還沒有點數紀錄。</p>
+    </div>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

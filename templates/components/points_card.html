@@ -1,0 +1,39 @@
+{# 集點卡。
+   注意：進度使用 Lifetime Earned（歷史累積取得的點數），
+   不是目前餘額 —— 這樣兌換禮物之後集點卡不會倒退。 #}
+
+<div class="points-card" data-points-card>
+  <h2 class="mb-0">🎯 我的集點卡</h2>
+
+  <div class="stamp-grid">
+    {% for i in range(card.points_per_card) %}
+      {% if i < card.current_points %}
+        <span class="stamp stamp--filled" aria-hidden="true">⭐</span>
+      {% else %}
+        <span class="stamp" aria-hidden="true">○</span>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  <p class="text-bold" style="font-size: 1.2rem;">
+    {{ card.current_points }} / {{ card.points_per_card }}
+  </p>
+
+  <p class="text-soft mb-0">
+    {% if card.remaining > 0 %}
+      再 {{ card.remaining }} 顆星星就完成一張啦！
+    {% else %}
+      新的一張集點卡開始囉，加油！🌟
+    {% endif %}
+  </p>
+
+  {% if card.completed_cards > 0 %}
+    <p class="badge badge--success mt-md">
+      🏅 已經完成 {{ card.completed_cards }} 張集點卡
+    </p>
+  {% endif %}
+
+  <p class="text-small text-soft mt-md mb-0">
+    歷史總共取得 {{ card.lifetime_earned }} ⭐
+  </p>
+</div>

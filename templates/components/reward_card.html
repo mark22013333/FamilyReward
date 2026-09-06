@@ -1,0 +1,45 @@
+{# 單張禮物卡。
+   前端會把換不起的禮物鎖起來，但後端一定會再檢查一次點數與庫存。 #}
+
+<div class="card {% if not affordable %}reward-card__locked{% endif %}">
+  <div class="task-card">
+    <span class="task-card__icon" aria-hidden="true">{{ reward.icon }}</span>
+
+    <div class="task-card__body">
+      <div class="task-card__title">{{ reward.name }}</div>
+      {% if reward.description %}
+        <p class="text-small text-soft mb-0">{{ reward.description }}</p>
+      {% endif %}
+      <div class="row" style="gap: var(--space-xs);">
+        <span class="badge badge--points">需要 {{ reward.points_required }} ⭐</span>
+        {% if not reward.is_unlimited %}
+          <span class="badge badge--muted">還剩 {{ reward.quantity }} 個</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="task-card__action">
+      {% if pending %}
+        <span class="badge badge--waiting">⏳ 等爸爸媽媽確認</span>
+
+      {% elif not reward.in_stock %}
+        <span class="badge badge--muted">😢 換完了</span>
+
+      {% elif affordable %}
+        <form method="post"
+              action="{{ url_for('child.request_reward', reward_id=reward.id) }}"
+              data-once data-reward-form>
+          {{ form.hidden_tag() }}
+          <button class="btn btn--success btn--block" type="submit" data-busy-text="送出中…">
+            我要這個！
+          </button>
+        </form>
+
+      {% else %}
+        <span class="badge badge--muted">
+          🔒 還差 {{ reward.points_required - balance }} ⭐
+        </span>
+      {% endif %}
+    </div>
+  </div>
+</div>

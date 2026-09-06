@@ -1,0 +1,49 @@
+{# 單張任務卡。
+   狀態不只用顏色表示，同時搭配 ✅ ⏳ 💪 圖示與文字，
+   確保色覺不同的使用者也能分辨。 #}
+
+{% set status = assignment.status %}
+{% set card_class =
+     'task-card--done' if status == AssignmentStatus.APPROVED.value else
+     ('task-card--waiting' if status == AssignmentStatus.WAITING_APPROVAL.value else
+     ('task-card--rejected' if status == AssignmentStatus.REJECTED.value else '')) %}
+
+<div class="card {{ card_class }}">
+  <div class="task-card">
+    <span class="task-card__icon {% if status == AssignmentStatus.APPROVED.value %}animate-check-pop{% endif %}"
+          aria-hidden="true">{{ assignment.task_icon_snapshot }}</span>
+
+    <div class="task-card__body">
+      <div class="task-card__title">{{ assignment.task_title_snapshot }}</div>
+      <div class="row row--sm" style="gap: var(--space-xs);">
+        <span class="badge badge--points">+{{ assignment.points_snapshot }} ⭐</span>
+        {% if assignment.required_snapshot %}
+          <span class="badge badge--muted">必做</span>
+        {% endif %}
+      </div>
+      {% if status == AssignmentStatus.REJECTED.value and assignment.rejection_reason %}
+        <p class="text-small mt-md mb-0">💬 {{ assignment.rejection_reason }}</p>
+      {% endif %}
+    </div>
+
+    <div class="task-card__action">
+      {% if status == AssignmentStatus.APPROVED.value %}
+        <span class="badge badge--success">✅ 完成　+{{ assignment.earned_points }} ⭐</span>
+
+      {% elif status == AssignmentStatus.WAITING_APPROVAL.value %}
+        {# 送出後按鈕直接消失，避免重複提交 #}
+        <span class="badge badge--waiting">⏳ 等爸爸媽媽確認</span>
+
+      {% else %}
+        <form method="post"
+              action="{{ url_for('child.submit_task', assignment_id=assignment.id) }}"
+              data-once data-task-form data-points="{{ assignment.points_snapshot }}">
+          {{ form.hidden_tag() }}
+          <button class="btn btn--success btn--block" type="submit" data-busy-text="送出中…">
+            {% if status == AssignmentStatus.REJECTED.value %}我再試一次！{% else %}我完成了！{% endif %}
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>

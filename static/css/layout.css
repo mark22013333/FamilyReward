@@ -1,0 +1,260 @@
+/* 版面配置。Mobile First：先寫手機，再用 min-width 往上加。 */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  background: var(--bg-page);
+  color: var(--text-main);
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100vh;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+h1, h2, h3, h4 {
+  margin: 0 0 var(--space-sm);
+  line-height: 1.3;
+}
+
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.3rem; }
+h3 { font-size: 1.1rem; }
+
+p { margin: 0 0 var(--space-sm); }
+
+a {
+  color: var(--color-primary-dark);
+  text-decoration: none;
+}
+
+a:hover { text-decoration: underline; }
+
+/* 鍵盤操作時的焦點必須明顯 */
+:focus-visible {
+  outline: 3px solid var(--color-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.app-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-md);
+  /* 底部導覽列的高度 + 安全區域 */
+  padding-bottom: calc(84px + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
+  .app-main {
+    padding: var(--space-lg);
+    padding-bottom: var(--space-xl);
+  }
+}
+
+.section {
+  margin-bottom: var(--space-lg);
+}
+
+.section__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: var(--space-md);
+}
+
+.stack { display: grid; gap: var(--space-md); }
+.stack--sm { gap: var(--space-sm); }
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.row--between { justify-content: space-between; }
+.row--end { justify-content: flex-end; }
+
+.grid {
+  display: grid;
+  gap: var(--space-md);
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 600px) {
+  .grid--2 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 900px) {
+  .grid--3 { grid-template-columns: repeat(3, 1fr); }
+}
+
+.text-soft { color: var(--text-soft); }
+.text-center { text-align: center; }
+.text-small { font-size: 0.875rem; }
+.text-bold { font-weight: 700; }
+.mt-0 { margin-top: 0; }
+.mb-0 { margin-bottom: 0; }
+.mt-md { margin-top: var(--space-md); }
+.mb-md { margin-bottom: var(--space-md); }
+.mt-lg { margin-top: var(--space-lg); }
+
+/* 只給螢幕閱讀器看的文字 */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- 上方導覽（小孩 / 後台共用外框） ---- */
+
+.topbar {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.topbar__inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-sm) var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.topbar__brand {
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.topbar__brand:hover { text-decoration: none; }
+
+/* ---- 底部導覽（手機） ---- */
+
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-soft);
+  box-shadow: 0 -4px 16px rgba(61, 50, 39, 0.08);
+  display: flex;
+  justify-content: space-around;
+  padding: var(--space-xs) var(--space-xs) calc(var(--space-xs) + env(safe-area-inset-bottom));
+  z-index: 30;
+}
+
+.bottom-nav__item {
+  flex: 1;
+  min-height: var(--tap-target);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 0.72rem;
+  color: var(--text-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-xs);
+}
+
+.bottom-nav__item:hover { text-decoration: none; }
+
+.bottom-nav__item[aria-current="page"] {
+  color: var(--color-primary-dark);
+  background: var(--bg-surface-alt);
+  font-weight: 700;
+}
+
+.bottom-nav__icon { font-size: 1.35rem; line-height: 1; }
+
+@media (min-width: 768px) {
+  .bottom-nav {
+    position: static;
+    border-top: none;
+    box-shadow: none;
+    background: transparent;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 var(--space-lg) var(--space-md);
+    justify-content: flex-start;
+    gap: var(--space-sm);
+  }
+  .bottom-nav__item {
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: var(--space-xs);
+    font-size: 0.95rem;
+    padding: var(--space-sm) var(--space-md);
+  }
+}
+
+/* ---- 後台側邊 / 上方選單 ---- */
+
+.admin-nav {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-soft);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-nav__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  white-space: nowrap;
+}
+
+.admin-nav__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-pill);
+  color: var(--text-soft);
+  font-size: 0.92rem;
+}
+
+.admin-nav__item:hover {
+  background: var(--bg-muted);
+  text-decoration: none;
+}
+
+.admin-nav__item[aria-current="page"] {
+  background: var(--color-primary);
+  color: var(--text-inverse);
+  font-weight: 700;
+}
+
+body.admin-body .app-main { max-width: 1100px; }

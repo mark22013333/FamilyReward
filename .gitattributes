@@ -1,0 +1,31 @@
+# 統一換行字元處理，避免在 Windows 與其他平台之間來回產生假的 diff。
+
+# 預設：repo 內一律存 LF，checkout 時交給各平台的 core.autocrlf 決定。
+* text=auto eol=lf
+
+# Windows 批次檔必須是 CRLF，否則某些情況下 cmd.exe 會解析失敗。
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 明確標記為文字檔（確保 diff 正常）
+*.py    text
+*.html  text
+*.css   text
+*.js    text
+*.md    text
+*.yaml  text
+*.yml   text
+*.ini   text
+*.txt   text
+*.mako  text
+
+# 二進位檔，不要做換行轉換
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.db    binary
+*.exe   binary
+*.woff  binary
+*.woff2 binary

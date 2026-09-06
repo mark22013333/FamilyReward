@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}{{ child.display_name }} — {{ app_name }}{% endblock %}
+
+{% block body_attrs %} data-theme="{{ child.theme }}"{% endblock %}
+
+{% block content %}
+<div class="card text-center animate-pop-in" style="max-width: 420px; margin: 0 auto;">
+  <div style="font-size: 4rem; line-height: 1;" aria-hidden="true">{{ child.avatar }}</div>
+  <h1>嗨，{{ child.display_name }}！</h1>
+  <p class="text-soft">輸入你的 4 個數字就可以開始囉</p>
+
+  <form method="post" novalidate data-pin-form>
+    {{ form.hidden_tag() }}
+
+    <div class="pin-display" aria-hidden="true">
+      {% for i in range(4) %}
+        <span class="pin-dot" data-pin-dot="{{ i }}"></span>
+      {% endfor %}
+    </div>
+
+    <label class="visually-hidden" for="pin">請輸入 4 位數字密碼</label>
+    <input class="form-input text-center" type="password" inputmode="numeric"
+           pattern="[0-9]*" maxlength="8" id="pin" name="pin"
+           autocomplete="off" required data-pin-input
+           style="letter-spacing: 0.5em; font-size: 1.4rem;">
+
+    {% if form.pin.errors %}
+      <div class="form-error">{{ form.pin.errors[0] }}</div>
+    {% endif %}
+
+    <div class="pin-pad mt-md">
+      {% for n in ['1','2','3','4','5','6','7','8','9'] %}
+        <button type="button" class="pin-key" data-pin-key="{{ n }}">{{ n }}</button>
+      {% endfor %}
+      <button type="button" class="pin-key" data-pin-clear aria-label="清除">✕</button>
+      <button type="button" class="pin-key" data-pin-key="0">0</button>
+      <button type="button" class="pin-key" data-pin-back aria-label="刪除一個數字">⌫</button>
+    </div>
+
+    <button class="btn btn--big btn--block mt-md" type="submit" {% if locked %}disabled{% endif %}>
+      {{ form.submit.label.text }} 🚀
+    </button>
+  </form>
+
+  <a class="btn btn--ghost btn--small mt-md" href="{{ url_for('public.index') }}">← 換一個人</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    "use strict";
+    var input = document.querySelector("[data-pin-input]");
+    var dots = document.querySelectorAll("[data-pin-dot]");
+    var form = document.querySelector("[data-pin-form]");
+    if (!input) { return; }
+
+    function paint() {
+      var length = input.value.length;
+      dots.forEach(function (dot, index) {
+        dot.classList.toggle("pin-dot--filled", index < length);
+      });
+    }
+
+    document.querySelectorAll("[data-pin-key]").forEach(function (key) {
+      key.addEventListener("click", function () {
+        if (input.value.length < 8) {
+          input.value += key.dataset.pinKey;
+          paint();
+        }
+        // 輸滿 4 位數就自動送出，小孩不用再找按鈕。
+        if (input.value.length === 4) {
+          window.setTimeout(function () { form.requestSubmit(); }, 150);
+        }
+      });
+    });
+
+    var back = document.querySelector("[data-pin-back]");
+    if (back) {
+      back.addEventListener("click", function () {
+        input.value = input.value.slice(0, -1);
+        paint();
+      });
+    }
+
+    var clear = document.querySelector("[data-pin-clear]");
+    if (clear) {
+      clear.addEventListener("click", function () {
+        input.value = "";
+        paint();
+      });
+    }
+
+    input.addEventListener("input", paint);
+    input.focus();
+  })();
+</script>
+{% endblock %}

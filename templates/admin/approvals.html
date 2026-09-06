@@ -1,0 +1,62 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}待確認 — {{ app_name }}{% endblock %}
+
+{% block admin_content %}
+<h1 class="section__title">✅ 待確認任務</h1>
+
+{% if assignments %}
+  <div class="stack stagger">
+    {% for assignment in assignments %}
+      <div class="card">
+        <div class="approval-item">
+          <span class="task-card__icon" aria-hidden="true">{{ assignment.child.avatar }}</span>
+
+          <div class="approval-item__body">
+            <div class="text-bold">{{ assignment.child.name }}</div>
+            <div class="task-card__title">
+              {{ assignment.task_icon_snapshot }} {{ assignment.task_title_snapshot }}
+            </div>
+            <div class="text-small text-soft">
+              完成時間：{{ assignment.submitted_at | local_time }}
+              ・日期：{{ assignment.assignment_date.strftime('%Y/%m/%d') }}
+            </div>
+            <span class="badge badge--points mt-md">
+              可以獲得 +{{ assignment.points_snapshot }} ⭐
+            </span>
+          </div>
+
+          <div class="approval-item__actions">
+            <form method="post"
+                  action="{{ url_for('admin.approve_assignment', assignment_id=assignment.id) }}"
+                  data-once>
+              {{ form.hidden_tag() }}
+              <button class="btn btn--success" type="submit" data-busy-text="處理中…">
+                完成 👍
+              </button>
+            </form>
+
+            <form method="post"
+                  action="{{ url_for('admin.reject_assignment', assignment_id=assignment.id) }}"
+                  class="reject-form" data-once>
+              {{ reject_form.hidden_tag() }}
+              <input class="form-input" type="text" name="reason" maxlength="200"
+                     placeholder="想跟小朋友說的話（選填）"
+                     aria-label="退回原因">
+              <button class="btn btn--ghost" type="submit" data-busy-text="處理中…">
+                還要再努力一下
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card empty-state">
+    <span class="empty-state__icon" aria-hidden="true">🎉</span>
+    <p class="text-bold">目前沒有需要確認的任務</p>
+    <p>小朋友完成任務後就會出現在這裡。</p>
+  </div>
+{% endif %}
+{% endblock %}

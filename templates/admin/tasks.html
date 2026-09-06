@@ -1,0 +1,94 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}任務管理 — {{ app_name }}{% endblock %}
+
+{% block admin_content %}
+<div class="row row--between mb-md">
+  <h1 class="section__title mb-0">📋 任務管理</h1>
+  <a class="btn" href="{{ url_for('admin.create_task') }}">＋ 新增任務</a>
+</div>
+
+{% if tasks %}
+  <div class="table-wrap">
+    <table class="table">
+      <caption class="visually-hidden">任務清單</caption>
+      <thead>
+        <tr>
+          <th scope="col">任務</th>
+          <th scope="col">分類</th>
+          <th scope="col">點數</th>
+          <th scope="col">週期</th>
+          <th scope="col">指派給</th>
+          <th scope="col">狀態</th>
+          <th scope="col">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+          <tr>
+            <td>
+              <div class="text-bold">{{ task.icon }} {{ task.title }}</div>
+              {% if task.required %}<span class="badge badge--muted">必做</span>{% endif %}
+            </td>
+            <td>{{ category_labels.get(task.category, task.category) }}</td>
+            <td class="text-bold">+{{ task.points }} ⭐</td>
+            <td>
+              {{ repeat_labels.get(task.repeat_type, task.repeat_type) }}
+              {% if task.schedules %}
+                <div class="text-small text-soft">
+                  {% for schedule in task.schedules %}{{ schedule.weekday }}{% if not loop.last %} {% endif %}{% endfor %}
+                </div>
+              {% endif %}
+              {% if task.start_date or task.end_date %}
+                <div class="text-small text-soft">
+                  {{ task.start_date.strftime('%m/%d') if task.start_date else '—' }}
+                  ～
+                  {{ task.end_date.strftime('%m/%d') if task.end_date else '—' }}
+                </div>
+              {% endif %}
+            </td>
+            <td>
+              {% for assignee in task.assignees %}
+                <span class="badge badge--muted">{{ assignee.child.avatar }} {{ assignee.child.name }}</span>
+              {% else %}
+                <span class="text-small text-soft">未指派</span>
+              {% endfor %}
+            </td>
+            <td>
+              {% if task.active %}
+                <span class="badge badge--success">✅ 使用中</span>
+              {% else %}
+                <span class="badge badge--muted">已停用</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="row" style="gap: var(--space-xs);">
+                <a class="btn btn--small btn--ghost"
+                   href="{{ url_for('admin.edit_task', task_id=task.id) }}">修改</a>
+                {% if task.active %}
+                  <form method="post"
+                        action="{{ url_for('admin.deactivate_task', task_id=task.id) }}"
+                        class="inline-form" data-once
+                        onsubmit="return confirm('確定要停用任務「{{ task.title }}」嗎？');">
+                    {{ form.hidden_tag() }}
+                    <button class="btn btn--small btn--ghost" type="submit">停用</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="text-small text-soft mt-md">
+    修改任務名稱或點數「不會」改變已經發生過的歷史紀錄（每筆紀錄都有當時的 snapshot）。
+  </p>
+{% else %}
+  <div class="card empty-state">
+    <span class="empty-state__icon" aria-hidden="true">📋</span>
+    <p class="text-bold">還沒有建立任務</p>
+    <a class="btn mt-md" href="{{ url_for('admin.create_task') }}">建立第一個任務</a>
+  </div>
+{% endif %}
+{% endblock %}

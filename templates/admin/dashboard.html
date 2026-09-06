@@ -1,0 +1,103 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}後台首頁 — {{ app_name }}{% endblock %}
+
+{% block admin_content %}
+<h1 class="section__title">📊 今天（{{ today | friendly_date }}）</h1>
+
+{% if backup_overdue %}
+  <div class="alert alert--warning">
+    <span aria-hidden="true">⚠️</span>
+    <div>
+      {% if days_since_backup is none %}
+        <strong>還沒有任何備份紀錄。</strong>
+      {% else %}
+        <strong>已經 {{ days_since_backup }} 天沒有備份囉。</strong>
+      {% endif %}
+      <div class="mt-md">
+        <form method="post" action="{{ url_for('admin.create_backup') }}" data-once>
+          {{ form.hidden_tag() }}
+          <button class="btn btn--small btn--info" type="submit" data-busy-text="備份中…">
+            立即備份
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+{% endif %}
+
+<div class="grid grid--2 mb-md">
+  <div class="stat-tile">
+    <div class="stat-tile__value">{{ pending_task_count }}</div>
+    <div class="stat-tile__label">待確認任務</div>
+    {% if pending_task_count > 0 %}
+      <a class="btn btn--small mt-md" href="{{ url_for('admin.approvals') }}">前往確認</a>
+    {% endif %}
+  </div>
+  <div class="stat-tile">
+    <div class="stat-tile__value">{{ pending_reward_count }}</div>
+    <div class="stat-tile__label">待確認禮物</div>
+    {% if pending_reward_count > 0 %}
+      <a class="btn btn--small mt-md" href="{{ url_for('admin.redemptions') }}">前往確認</a>
+    {% endif %}
+  </div>
+</div>
+
+<section class="section">
+  <h2 class="section__title">👧 今天的小朋友</h2>
+
+  {% if rows %}
+    <div class="stack">
+      {% for row in rows %}
+        <div class="card">
+          <div class="task-card">
+            <span class="task-card__icon" aria-hidden="true">{{ row.child.avatar }}</span>
+            <div class="task-card__body">
+              <div class="task-card__title">{{ row.child.name }}</div>
+              <div class="text-small text-soft">
+                完成：{{ row.progress.approved }} / {{ row.progress.total }}
+                ・今天取得 +{{ row.progress.earned_points }} ⭐
+                {% if row.progress.waiting > 0 %}
+                  ・⏳ {{ row.progress.waiting }} 個待確認
+                {% endif %}
+              </div>
+              <div class="progress mt-md" style="max-width: 320px;">
+                <div class="progress__bar" style="width: {{ row.progress.percent }}%"></div>
+              </div>
+            </div>
+            <div class="task-card__action text-center">
+              <div class="text-soft text-small">目前點數</div>
+              <div class="big-number" style="font-size: 1.8rem;">{{ row.balance }}</div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card empty-state">
+      <span class="empty-state__icon" aria-hidden="true">👧</span>
+      <p class="text-bold">還沒有建立小朋友</p>
+      <a class="btn mt-md" href="{{ url_for('admin.create_child') }}">建立第一位小朋友</a>
+    </div>
+  {% endif %}
+</section>
+
+<section class="section">
+  <h2 class="section__title">💾 備份狀態</h2>
+  <div class="card">
+    {% if latest_backup %}
+      <p class="mb-0">最近備份：<strong>{{ latest_backup.display_time }}</strong>
+        （{{ latest_backup.size_mb }} MB）</p>
+    {% else %}
+      <p class="mb-0">還沒有備份紀錄。</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('admin.create_backup') }}" class="mt-md" data-once>
+      {{ form.hidden_tag() }}
+      <button class="btn btn--info" type="submit" data-busy-text="備份中…">立即備份</button>
+    </form>
+    <p class="text-small text-soft mt-md mb-0">
+      超過 {{ reminder_days }} 天沒有備份會在這裡提醒你。
+    </p>
+  </div>
+</section>
+{% endblock %}

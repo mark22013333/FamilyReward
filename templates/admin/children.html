@@ -1,0 +1,74 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}小孩管理 — {{ app_name }}{% endblock %}
+
+{% block admin_content %}
+<div class="row row--between mb-md">
+  <h1 class="section__title mb-0">👧 小孩管理</h1>
+  <a class="btn" href="{{ url_for('admin.create_child') }}">＋ 新增小孩</a>
+</div>
+
+{% if children %}
+  <div class="table-wrap">
+    <table class="table">
+      <caption class="visually-hidden">小孩清單</caption>
+      <thead>
+        <tr>
+          <th scope="col">頭像</th>
+          <th scope="col">名字</th>
+          <th scope="col">主題</th>
+          <th scope="col">目前點數</th>
+          <th scope="col">狀態</th>
+          <th scope="col">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for child in children %}
+          <tr>
+            <td style="font-size: 1.6rem;">{{ child.avatar }}</td>
+            <td>
+              <div class="text-bold">{{ child.name }}</div>
+              {% if child.nickname %}
+                <div class="text-small text-soft">{{ child.nickname }}</div>
+              {% endif %}
+            </td>
+            <td>{{ theme_labels.get(child.theme, child.theme) }}</td>
+            <td class="text-bold">{{ balances.get(child.id, 0) }} ⭐</td>
+            <td>
+              {% if child.active %}
+                <span class="badge badge--success">✅ 使用中</span>
+              {% else %}
+                <span class="badge badge--muted">已停用</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="row" style="gap: var(--space-xs);">
+                <a class="btn btn--small btn--ghost"
+                   href="{{ url_for('admin.edit_child', child_id=child.id) }}">修改</a>
+                {% if child.active %}
+                  <form method="post"
+                        action="{{ url_for('admin.deactivate_child', child_id=child.id) }}"
+                        class="inline-form" data-once
+                        onsubmit="return confirm('確定要停用「{{ child.name }}」嗎？歷史紀錄會保留。');">
+                    {{ form.hidden_tag() }}
+                    <button class="btn btn--small btn--ghost" type="submit">停用</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="text-small text-soft mt-md">
+    停用採軟刪除，不會刪掉任何歷史紀錄與點數。
+  </p>
+{% else %}
+  <div class="card empty-state">
+    <span class="empty-state__icon" aria-hidden="true">👧</span>
+    <p class="text-bold">還沒有建立小朋友</p>
+    <a class="btn mt-md" href="{{ url_for('admin.create_child') }}">建立第一位小朋友</a>
+  </div>
+{% endif %}
+{% endblock %}

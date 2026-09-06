@@ -1,0 +1,125 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}設定 — {{ app_name }}{% endblock %}
+
+{% block admin_content %}
+<h1 class="section__title">⚙️ 設定</h1>
+
+<section class="section">
+  <h2 class="section__title">🔐 修改管理員密碼</h2>
+  <div class="card" style="max-width: 480px;">
+    <form method="post" novalidate>
+      {{ form.hidden_tag() }}
+
+      <div class="form-field">
+        <label class="form-label" for="current_password">{{ form.current_password.label.text }}</label>
+        <input class="form-input" type="password" id="current_password" name="current_password"
+               autocomplete="current-password" required>
+        {% if form.current_password.errors %}
+          <div class="form-error">{{ form.current_password.errors[0] }}</div>
+        {% endif %}
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="new_password">{{ form.new_password.label.text }}</label>
+        <input class="form-input" type="password" id="new_password" name="new_password"
+               autocomplete="new-password" minlength="8" required>
+        {% if form.new_password.errors %}
+          <div class="form-error">{{ form.new_password.errors[0] }}</div>
+        {% endif %}
+        <div class="form-hint">至少 8 個字元。</div>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="confirm_password">{{ form.confirm_password.label.text }}</label>
+        <input class="form-input" type="password" id="confirm_password" name="confirm_password"
+               autocomplete="new-password" required>
+        {% if form.confirm_password.errors %}
+          <div class="form-error">{{ form.confirm_password.errors[0] }}</div>
+        {% endif %}
+      </div>
+
+      <button class="btn btn--info" type="submit">修改密碼</button>
+    </form>
+  </div>
+</section>
+
+<section class="section">
+  <h2 class="section__title">💾 備份</h2>
+  <div class="card">
+    <form method="post" action="{{ url_for('admin.create_backup') }}" data-once>
+      {{ confirm_form.hidden_tag() }}
+      <button class="btn btn--info" type="submit" data-busy-text="備份中…">立即備份</button>
+    </form>
+
+    {% if backups %}
+      <div class="table-wrap mt-md">
+        <table class="table">
+          <caption class="visually-hidden">備份檔案</caption>
+          <thead>
+            <tr>
+              <th scope="col">檔名</th>
+              <th scope="col">時間</th>
+              <th scope="col">大小</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for backup in backups %}
+              <tr>
+                <td class="text-small">{{ backup.path.name }}</td>
+                <td class="text-small">{{ backup.display_time }}</td>
+                <td class="text-small">{{ backup.size_mb }} MB</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="text-soft mt-md mb-0">還沒有備份檔案。</p>
+    {% endif %}
+
+    <p class="text-small text-soft mt-md mb-0">
+      備份使用 SQLite 官方 Backup API，即使系統正在使用中也能安全備份。
+      還原請關閉程式後執行 <code>restore.bat</code>。
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <h2 class="section__title">📋 目前設定</h2>
+  <div class="card">
+    <div class="table-wrap">
+      <table class="table">
+        <caption class="visually-hidden">系統設定</caption>
+        <tbody>
+          <tr><th scope="row">系統名稱</th><td>{{ settings.app.name }}</td></tr>
+          <tr><th scope="row">時區</th><td>{{ settings.app.timezone }}</td></tr>
+          <tr><th scope="row">執行環境</th><td>{{ settings.app.env }}</td></tr>
+          <tr><th scope="row">服務位址</th>
+              <td>{{ settings.server.host }}:{{ settings.server.port }}</td></tr>
+          <tr><th scope="row">一張集點卡</th>
+              <td>{{ settings.reward.points_per_card }} 點</td></tr>
+          <tr><th scope="row">PIN 長度</th>
+              <td>{{ settings.security.child_pin_length }} 位數</td></tr>
+          <tr><th scope="row">Session 有效時間</th>
+              <td>{{ settings.security.session_timeout_hours }} 小時</td></tr>
+          <tr><th scope="row">備份提醒</th>
+              <td>超過 {{ settings.backup.reminder_days }} 天</td></tr>
+          <tr><th scope="row">Cloudflare Tunnel</th>
+              <td>
+                {% if settings.cloudflare.enabled %}
+                  已啟用{% if cloudflare_hostname %}（{{ cloudflare_hostname }}）{% endif %}
+                {% else %}
+                  未啟用
+                {% endif %}
+              </td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="text-small text-soft mt-md mb-0">
+      要修改這些設定請編輯 <code>config\config.yaml</code> 後重新啟動。
+      敏感資訊（SECRET_KEY 等）放在 <code>.env</code>，不會顯示在這裡。
+    </p>
+  </div>
+</section>
+{% endblock %}

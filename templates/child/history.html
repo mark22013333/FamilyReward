@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}我的紀錄 — {{ app_name }}{% endblock %}
+{% block body_attrs %} data-theme="{{ child.theme }}"{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/child.css') }}">
+{% endblock %}
+
+{% block nav %}{% include "components/child_nav.html" %}{% endblock %}
+
+{% block content %}
+<h1 class="section__title">⭐ 我的紀錄</h1>
+
+<div class="grid grid--2 mb-md">
+  <div class="card text-center">
+    <div class="text-soft text-small">現在的星星</div>
+    <div class="big-number">{{ balance }}</div>
+    <div class="text-small text-soft">可以拿來換禮物</div>
+  </div>
+  <div class="card text-center">
+    <div class="text-soft text-small">總共努力得到</div>
+    <div class="big-number">{{ card.lifetime_earned }}</div>
+    <div class="text-small text-soft">完成 {{ card.completed_cards }} 張集點卡</div>
+  </div>
+</div>
+
+<section class="section">
+  <h2 class="section__title">🏅 我的成就</h2>
+  <div class="stack stack--sm">
+    {% for item in achievements %}
+      <div class="achievement {% if not item.unlocked %}achievement--locked{% endif %}">
+        <span class="achievement__icon" aria-hidden="true">{{ item.achievement.icon }}</span>
+        <div style="flex: 1;">
+          <div class="text-bold">{{ item.achievement.name }}</div>
+          <div class="text-small text-soft">{{ item.achievement.description }}</div>
+        </div>
+        {% if item.unlocked %}
+          <span class="badge badge--success">已解鎖</span>
+        {% else %}
+          <span class="badge badge--muted">🔒</span>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="section">
+  <h2 class="section__title">📜 星星紀錄</h2>
+
+  {% if grouped %}
+    <div class="stack">
+      {% for day, items in grouped %}
+        <div class="card">
+          <h3 class="mb-md">
+            {% if day == today %}今天
+            {% elif (today - day).days == 1 %}昨天
+            {% else %}{{ day.strftime('%Y/%m/%d') }}{% endif %}
+          </h3>
+          <div class="stack stack--sm">
+            {% for transaction in items %}
+              <div class="ledger-item">
+                <span class="ledger-item__points {% if transaction.points > 0 %}ledger-item__points--plus{% else %}ledger-item__points--minus{% endif %}">
+                  {{ transaction.signed_points }}
+                </span>
+                <div style="flex: 1; min-width: 0;">
+                  <div>{{ transaction.description }}</div>
+                  <div class="text-small text-soft">{{ transaction.created_at | local_time }}</div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="card empty-state">
+      <span class="empty-state__icon" aria-hidden="true">🌱</span>
+      <p class="text-bold">還沒有星星紀錄喔</p>
+      <p>完成第一個任務就會出現囉！</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

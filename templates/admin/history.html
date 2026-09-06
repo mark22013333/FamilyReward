@@ -1,0 +1,45 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}歷史紀錄 — {{ app_name }}{% endblock %}
+
+{% block admin_content %}
+<h1 class="section__title">📜 歷史紀錄（稽核）</h1>
+
+<p class="text-small text-soft">
+  這裡記錄誰在什麼時候做了什麼。稽核紀錄禁止刪除或修改，
+  也不會記錄密碼、PIN 或任何憑證。
+</p>
+
+{% if logs %}
+  <div class="table-wrap">
+    <table class="table">
+      <caption class="visually-hidden">稽核紀錄</caption>
+      <thead>
+        <tr>
+          <th scope="col">時間</th>
+          <th scope="col">操作者</th>
+          <th scope="col">動作</th>
+          <th scope="col">說明</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+          <tr>
+            <td class="text-small">{{ log.created_at | local_datetime }}</td>
+            <td>
+              <span class="badge badge--muted">{{ log.actor_type }}</span>
+              {% if log.actor_name %}<div class="text-small">{{ log.actor_name }}</div>{% endif %}
+            </td>
+            <td class="text-small">{{ log.action }}</td>
+            <td>{{ log.description }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="card empty-state">
+    <p class="text-soft">還沒有紀錄。</p>
+  </div>
+{% endif %}
+{% endblock %}

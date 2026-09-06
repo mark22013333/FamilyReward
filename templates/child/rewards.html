@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}我的禮物 — {{ app_name }}{% endblock %}
+{% block body_attrs %} data-theme="{{ child.theme }}"{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/child.css') }}">
+{% endblock %}
+
+{% block nav %}{% include "components/child_nav.html" %}{% endblock %}
+
+{% block content %}
+<h1 class="section__title">🎁 我的禮物</h1>
+
+<div class="card star-balance mb-md">
+  <span class="star-balance__icon" aria-hidden="true">⭐</span>
+  <div>
+    <div class="text-soft text-small">目前</div>
+    <div class="big-number">{{ balance }}</div>
+  </div>
+</div>
+
+{% if rewards %}
+  <div class="stack stagger">
+    {% for reward in rewards %}
+      {% set affordable = balance >= reward.points_required %}
+      {% set pending = reward.id in pending_ids %}
+      {% include "components/reward_card.html" %}
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card empty-state">
+    <span class="empty-state__icon" aria-hidden="true">🎁</span>
+    <p class="text-bold">禮物櫃目前還是空的</p>
+    <p>請爸爸媽媽放一些驚喜進來吧！</p>
+  </div>
+{% endif %}
+
+{% if redemptions %}
+<section class="section mt-lg">
+  <h2 class="section__title">📜 我換過的禮物</h2>
+  <div class="card">
+    <div class="stack stack--sm">
+      {% for item in redemptions %}
+        <div class="ledger-item">
+          <span aria-hidden="true" style="font-size: 1.4rem;">{{ item.reward_icon_snapshot }}</span>
+          <div style="flex: 1; min-width: 0;">
+            <div class="text-bold">{{ item.reward_name_snapshot }}</div>
+            <div class="text-small text-soft">
+              {{ redemption_status_labels.get(item.status, item.status) }}
+              ・{{ item.requested_at | local_datetime }}
+            </div>
+          </div>
+          <span class="ledger-item__points ledger-item__points--minus">-{{ item.points }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/animations.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/reward.js') }}" defer></script>
+{% endblock %}
