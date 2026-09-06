@@ -35,6 +35,9 @@ def ensure_initial_admin(username: str, initial_password: str) -> AdminUser | No
     回傳新建立的帳號，若原本就存在則回傳 None。
     """
     if count_admins() > 0:
+        # 帳號已存在時，config / .env 的設定值一律不生效。
+        # 這件事很容易誤會（使用者改了 .env 卻登不進去），因此主動警告。
+        _warn_if_settings_look_ignored(username, initial_password)
         return None
 
     if not initial_password:
@@ -63,6 +66,40 @@ def ensure_initial_admin(username: str, initial_password: str) -> AdminUser | No
 
     logger.info("Initial admin created: %s", admin.username)
     return admin
+
+
+def _warn_if_settings_look_ignored(username: str, initial_password: str) -> None:
+    """帳號已存在時，若 config / .env 的值和實際不符就提出警告。
+
+    背景：`admin.initial_username` 與 `ADMIN_INITIAL_PASSWORD` 都只在
+    「第一次建立帳號」時生效。使用者常誤以為改了就會套用，結果登不進去
+    又不知道原因。這裡在啟動 log 明確說出來。
+
+    注意：只比對「是否相符」，絕不把密碼內容寫進 log。
+    """
+    admins = list(db.session.execute(db.select(AdminUser)).scalars())
+    if not admins:
+        return
+
+    configured = (username or "").strip()
+    if configured and not any(a.username == configured for a in admins):
+        actual = "、".join(a.username for a in admins)
+        logger.warning(
+            "config.yaml 的 admin.initial_username 是「%s」，但資料庫裡的管理員是「%s」。"
+            "這個設定只在第一次建立帳號時生效，現在不會套用。"
+            "要改帳號請登入後台的「設定」頁。",
+            configured,
+            actual,
+        )
+
+    if initial_password and not any(
+        a.verify_password(initial_password) for a in admins
+    ):
+        logger.warning(
+            ".env 的 ADMIN_INITIAL_PASSWORD 和目前管理員的密碼不同。"
+            "這個設定只在第一次建立帳號時生效，改了不會套用到既有帳號。"
+            "忘記密碼請執行：.venv\\Scripts\\python.exe scripts\\reset_admin_password.py"
+        )
 
 
 def record_login(admin: AdminUser) -> None:

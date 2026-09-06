@@ -12,7 +12,7 @@ server:
   # ★ 網站的連接埠。8080 被其他程式占用時就改這裡，例如 8090。
   #   改完之後網址也要跟著改：http://127.0.0.1:<port>
   #   若有啟用 Cloudflare，cloudflare/config.yml 的 service 也要改成同一個 port。
-  port: 8080
+  port: 19880
 
   # 同時處理請求的執行緒數量。家庭使用 8 綽綽有餘。
   threads: 8
@@ -49,7 +49,7 @@ admin:
   #
   #   忘記帳號時，可以用這個指令查詢目前的管理員帳號：
   #       .venv\Scripts\python.exe scripts\show_admin.py
-  initial_username: "admin"
+  initial_username: "@Ndjrn3fv"
 
 cloudflare:
   # enabled 的意思是「要不要由 start.bat 自己啟動一個 cloudflared」。

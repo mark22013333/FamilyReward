@@ -315,3 +315,81 @@ def test_show_admin_script_reports_username(app):
     assert "管理員帳號" in output or "找不到資料庫" in output
     assert "password_hash" not in output
     assert "pbkdf2" not in output.lower() and "scrypt" not in output.lower()
+
+
+# --------------------------------------------------------------------------
+# 「改了 .env 卻沒生效」的警告（實際踩過的坑）
+# --------------------------------------------------------------------------
+
+
+def test_warns_when_env_password_differs(db, admin_user, caplog):
+    """改了 .env 的密碼但帳號已存在時，啟動要明確警告，不能默默忽略。"""
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        admin_service.ensure_initial_admin(ADMIN_USERNAME, "a-completely-different-pw")
+
+    messages = " ".join(record.message for record in caplog.records)
+    assert "ADMIN_INITIAL_PASSWORD" in messages
+    assert "第一次建立帳號" in messages
+    # 絕不可以把密碼內容寫進 log
+    assert "a-completely-different-pw" not in messages
+
+
+def test_warns_when_config_username_differs(db, admin_user, caplog):
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        admin_service.ensure_initial_admin("totally-different", ADMIN_PASSWORD)
+
+    messages = " ".join(record.message for record in caplog.records)
+    assert "initial_username" in messages
+    assert "totally-different" in messages
+    assert ADMIN_USERNAME in messages
+
+
+def test_no_warning_when_settings_match(db, admin_user, caplog):
+    """設定與實際相符時不該吵使用者。"""
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        admin_service.ensure_initial_admin(ADMIN_USERNAME, ADMIN_PASSWORD)
+
+    messages = " ".join(record.message for record in caplog.records)
+    assert "ADMIN_INITIAL_PASSWORD" not in messages
+    assert "initial_username" not in messages
+
+
+def test_env_password_never_overwrites_existing(db, admin_user):
+    """核心規則：.env 不能覆寫既有帳號的密碼。"""
+    admin_service.ensure_initial_admin(ADMIN_USERNAME, "attacker-supplied-password")
+
+    assert admin_user.verify_password(ADMIN_PASSWORD)
+    assert not admin_user.verify_password("attacker-supplied-password")
+
+
+def test_reset_password_script_exists_and_is_documented():
+    """警告訊息裡提到的腳本必須真的存在。"""
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parent.parent.parent
+    assert (project_root / "scripts" / "reset_admin_password.py").exists()
+
+
+def test_show_admin_reports_login_url(app):
+    """show_admin.py 要顯示正確的登入網址（連錯 port 是常見問題）。"""
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parent.parent.parent
+    result = subprocess.run(
+        [sys.executable, str(project_root / "scripts" / "show_admin.py")],
+        capture_output=True,
+        timeout=60,
+        cwd=str(project_root),
+    )
+    output = result.stdout.decode("utf-8", errors="replace")
+
+    assert "登入網址" in output or "找不到資料庫" in output
+    assert "reset_admin_password.py" in output or "找不到資料庫" in output

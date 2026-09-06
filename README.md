@@ -1098,17 +1098,40 @@ tasklist | findstr <上面查到的 PID>
 
 ### 忘記 Admin Password
 
-沒有「忘記密碼」信件功能（家庭系統刻意不接 Email）。請用以下方式重設：
+```bat
+.venv\Scripts\python.exe scriptseset_admin_password.py
+```
 
-1. 執行 `stop.bat`
-2. 執行 `backup.bat`（保險）
-3. 執行：
+會互動式詢問新密碼（輸入時不顯示），並寫入稽核紀錄。
 
-   ```bat
-   .venv\Scripts\python.exe -c "from family_reward import create_app; from family_reward.extensions import db; from family_reward.models import AdminUser; app=create_app(); ctx=app.app_context(); ctx.push(); a=db.session.execute(db.select(AdminUser)).scalars().first(); a.set_password('新密碼至少8字'); db.session.commit(); print('已重設：', a.username)"
-   ```
+> **注意：改 `.env` 的 `ADMIN_INITIAL_PASSWORD` 沒有用**
+>
+> 那個值**只在「第一次建立帳號」時生效**。帳號建立之後改它不會套用到既有帳號
+> —— 設定檔不應該有能力隨時覆寫密碼。
+>
+> 如果你改了 `.env` 卻登不進去，啟動時的 log 會有這樣的警告：
+>
+> ```
+> .env 的 ADMIN_INITIAL_PASSWORD 和目前管理員的密碼不同。
+> 這個設定只在第一次建立帳號時生效，改了不會套用到既有帳號。
+> ```
 
-4. 執行 `start.bat`，用新密碼登入，然後到「⚙️ 設定」改成自己記得的密碼
+### 登不進後台
+
+先確認三件事：
+
+```bat
+.venv\Scripts\python.exe scripts\show_admin.py
+```
+
+它會告訴你：**帳號是什麼**、**正確的登入網址（含 port）**、**服務有沒有在跑**。
+
+常見原因：
+
+1. **連錯 port** —— 如果你改過 `config.yaml` 的 `server.port`，網址也要跟著改。
+   例如改成 `19880`，就要開 `http://127.0.0.1:19880`，不是 8080。
+2. **服務沒啟動** —— 先執行 `start.bat`。
+3. **改了 `.env` 的密碼但沒生效** —— 見上一節。
 
 ### config.yaml 格式錯誤
 

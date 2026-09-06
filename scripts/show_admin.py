@@ -68,7 +68,37 @@ def main() -> int:
         if last_login:
             print(f"        最後登入：{last_login}")
     print()
-    print("忘記密碼的話，請參考 README 的「忘記 Admin Password」章節重設。")
+
+    # 「登不進去」有很大機率是連錯 port，所以一併顯示正確網址。
+    host = settings.server.host
+    port = settings.server.port
+    print("後台登入網址：")
+    print()
+    print(f"    http://{host}:{port}/login/admin")
+    print()
+
+    import socket
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(1.5)
+        running = sock.connect_ex((host, port)) == 0
+
+    if running:
+        print("    ✓ 服務正在執行中")
+    else:
+        print("    ✗ 服務沒有在執行 —— 請先執行 start.bat")
+    print()
+
+    if settings.cloudflare.hostname:
+        print(f"對外網址：https://{settings.cloudflare.hostname}/login/admin")
+        print()
+
+    print("忘記密碼請執行：")
+    print()
+    print("    .venv\\Scripts\\python.exe scripts\\reset_admin_password.py")
+    print()
+    print("※ .env 的 ADMIN_INITIAL_PASSWORD 只在「第一次建立帳號」時生效，")
+    print("  改了它不會套用到既有帳號。")
     print()
     return 0
 
