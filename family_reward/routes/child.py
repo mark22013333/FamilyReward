@@ -42,6 +42,13 @@ def _tz() -> str:
     return current_app.settings.app.timezone  # type: ignore[attr-defined]
 
 
+def _safe_child_redirect(target: str | None) -> str:
+    """只允許導回小孩自己的頁面，避免被拿來做 open redirect。"""
+    if target and target.startswith("/child/") and not target.startswith("//"):
+        return target
+    return url_for("child.dashboard")
+
+
 def _points_per_card() -> int:
     """讀取目前的集點卡點數。
 
@@ -60,6 +67,11 @@ def dashboard():  # noqa: ANN201
     today = today_local(_tz())
 
     assignments = assignment_service.ensure_assignments_for_date(child.id, today)
+
+    # 前幾天沒開過網站的話，那幾天的紀錄還不存在，先補建才有得補按。
+    assignment_service.ensure_makeup_window(child.id, today)
+    makeup_assignments = assignment_service.list_makeup_assignments(child.id, today)
+
     progress = assignment_service.get_daily_progress(child.id, today)
     balance = point_service.get_balance(child.id)
     card = point_service.get_card_progress(child.id, _points_per_card())
@@ -84,6 +96,8 @@ def dashboard():  # noqa: ANN201
         child=child,
         today=today,
         assignments=assignments,
+        makeup_assignments=makeup_assignments,
+        makeup_days=assignment_service.MAKEUP_DAYS,
         progress=progress,
         balance=balance,
         card=card,
@@ -99,25 +113,41 @@ def dashboard():  # noqa: ANN201
 @child_bp.route("/tasks/<int:assignment_id>/submit", methods=["POST"])
 @child_required
 def submit_task(assignment_id: int):  # noqa: ANN201
-    """小孩按下「我完成了！」。採 PRG 避免重新整理重複送出。"""
+    """小孩按下「我完成了！」。採 PRG 避免重新整理重複送出。
+
+    也可以補送前幾天漏掉的任務（期限見 assignment_service.MAKEUP_DAYS）。
+    """
     child = get_current_child()
     assert child is not None
+    today = today_local(_tz())
+
+    # 從行事曆某一天送出時，送完要回到那一天，而不是跳回首頁。
+    back_to = _safe_child_redirect(request.form.get("back_to"))
 
     form = ConfirmForm()
     if not form.validate_on_submit():
         flash("哎呀，好像卡住了一下 😵　再試一次看看吧！", "error")
-        return redirect(url_for("child.dashboard"))
+        return redirect(back_to)
 
     try:
-        assignment_service.submit_assignment(assignment_id, child)
-        flash(
-            "收到啦！🎉　等爸爸媽媽確認完成後，星星就會跑進你的集點卡！",
-            "success",
+        assignment = assignment_service.submit_assignment(
+            assignment_id, child, today=today
         )
+        if assignment.assignment_date < today:
+            flash(
+                f"收到啦！🎉　{assignment.assignment_date:%m/%d} 的"
+                f"「{assignment.task_title_snapshot}」已經送給爸爸媽媽確認囉！",
+                "success",
+            )
+        else:
+            flash(
+                "收到啦！🎉　等爸爸媽媽確認完成後，星星就會跑進你的集點卡！",
+                "success",
+            )
     except AppError as exc:
         flash(exc.message, "error")
 
-    return redirect(url_for("child.dashboard"))
+    return redirect(back_to)
 
 
 @child_bp.route("/calendar")
@@ -154,15 +184,28 @@ def calendar_day(day: str):  # noqa: ANN201
         flash("日期格式不太對喔。", "error")
         return redirect(url_for("child.calendar"))
 
+    today = today_local(_tz())
+
+    # 在補送期限內的話，先確保那天的紀錄存在（可能小孩當天根本沒開過）。
+    days_ago = (today - target).days
+    if 0 < days_ago <= assignment_service.MAKEUP_DAYS:
+        assignment_service.ensure_assignments_for_date(child.id, target)
+
     assignments = calendar_service.get_day_detail(child.id, target)
     earned = sum(a.earned_points for a in assignments)
+    makeup_ids = {
+        a.id for a in assignments if assignment_service.can_make_up(a, today)
+    }
 
     return render_template(
         "child/calendar_day.html",
         child=child,
         target=target,
+        today=today,
         assignments=assignments,
         earned=earned,
+        makeup_ids=makeup_ids,
+        form=ConfirmForm(),
         AssignmentStatus=AssignmentStatus,
     )
 

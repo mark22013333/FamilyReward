@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -35,10 +35,15 @@ from ..models import (
     TaskAssignment,
     TransactionType,
 )
-from ..utils.timezone import utcnow
+from ..utils.timezone import today_local, utcnow
 from . import audit_service, notification_service, point_service
 
 logger = logging.getLogger(__name__)
+
+#: 可以補送出幾天前的任務。
+#: 小孩常常當天忘記按「我完成了！」，隔天想補；但也不能無限往回補，
+#: 否則「當下完成」的意義會消失，家長也很難判斷到底有沒有真的做。
+MAKEUP_DAYS = 3
 
 
 @dataclass(frozen=True)
@@ -136,6 +141,56 @@ def list_assignments(child_id: int, target: date) -> list[TaskAssignment]:
     )
 
 
+def ensure_makeup_window(child_id: int, today: date) -> None:
+    """把補送期限內、還沒建立的任務紀錄補建起來。
+
+    小孩昨天完全沒開過網站時，昨天的紀錄根本還不存在（採按需產生），
+    這時候畫面上會什麼都沒有、無從補按。所以先把期限內的日子補建。
+
+    刻意只補 MAKEUP_DAYS 天內：再往前就不該憑空生出歷史紀錄。
+    """
+    for offset in range(1, MAKEUP_DAYS + 1):
+        ensure_assignments_for_date(child_id, today - timedelta(days=offset))
+
+
+def list_makeup_assignments(child_id: int, today: date) -> list[TaskAssignment]:
+    """列出補送期限內、還沒完成的過去任務（新到舊）。
+
+    只回傳還可以送出的（TODO / REJECTED）；
+    已送出或已完成的不需要出現在「還沒完成」清單裡。
+    """
+    earliest = today - timedelta(days=MAKEUP_DAYS)
+
+    return list(
+        db.session.execute(
+            db.select(TaskAssignment)
+            .where(
+                TaskAssignment.child_id == child_id,
+                TaskAssignment.assignment_date >= earliest,
+                TaskAssignment.assignment_date < today,
+                TaskAssignment.status.in_(
+                    [
+                        AssignmentStatus.TODO.value,
+                        AssignmentStatus.REJECTED.value,
+                    ]
+                ),
+            )
+            .order_by(
+                TaskAssignment.assignment_date.desc(), TaskAssignment.id.asc()
+            )
+        ).scalars()
+    )
+
+
+def can_make_up(assignment: TaskAssignment, today: date) -> bool:
+    """這筆任務現在還能不能補送出（畫面用來決定要不要顯示按鈕）。"""
+    if not assignment.can_submit:
+        return False
+    if assignment.assignment_date > today:
+        return False
+    return (today - assignment.assignment_date).days <= MAKEUP_DAYS
+
+
 def get_assignment_for_child(assignment_id: int, child_id: int) -> TaskAssignment:
     """取得任務，同時做物件層級授權檢查。
 
@@ -149,9 +204,29 @@ def get_assignment_for_child(assignment_id: int, child_id: int) -> TaskAssignmen
     return assignment
 
 
-def submit_assignment(assignment_id: int, child: Child) -> TaskAssignment:
-    """小孩送出完成申請：TODO / REJECTED → WAITING_APPROVAL。"""
+def submit_assignment(
+    assignment_id: int, child: Child, *, today: date | None = None
+) -> TaskAssignment:
+    """小孩送出完成申請：TODO / REJECTED → WAITING_APPROVAL。
+
+    允許補送出前幾天的任務（小孩常常當天忘記按），
+    但有兩個界線：
+
+    * 不能補太久以前 —— 見 MAKEUP_DAYS。超過期限就只能請家長手動加點，
+      否則「當下完成」的意義會消失，家長也很難判斷到底有沒有真的做。
+    * 不能送出「未來」的任務 —— 明天的事情不可能今天就完成。
+    """
     assignment = get_assignment_for_child(assignment_id, child.id)
+    today = today or today_local()
+
+    if assignment.assignment_date > today:
+        raise InvalidStateError("這是之後的任務，還不能完成喔！⏳")
+
+    days_late = (today - assignment.assignment_date).days
+    if days_late > MAKEUP_DAYS:
+        raise InvalidStateError(
+            f"這個任務已經超過 {MAKEUP_DAYS} 天囉，請爸爸媽媽幫你處理 🙏"
+        )
 
     if not assignment.can_submit:
         if assignment.status == AssignmentStatus.WAITING_APPROVAL.value:
@@ -171,7 +246,14 @@ def submit_assignment(assignment_id: int, child: Child) -> TaskAssignment:
             actor_name=child.name,
             entity_type="TASK_ASSIGNMENT",
             entity_id=assignment.id,
-            description=f"{child.name} 送出「{assignment.task_title_snapshot}」完成申請",
+            description=(
+                f"{child.name} 送出「{assignment.task_title_snapshot}」完成申請"
+                + (
+                    f"（補送 {assignment.assignment_date:%m/%d} 的任務）"
+                    if days_late > 0
+                    else ""
+                )
+            ),
         )
         db.session.commit()
     except Exception:

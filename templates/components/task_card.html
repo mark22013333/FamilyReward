@@ -39,6 +39,8 @@
               action="{{ url_for('child.submit_task', assignment_id=assignment.id) }}"
               data-once data-task-form data-points="{{ assignment.points_snapshot }}">
           {{ form.hidden_tag() }}
+          {# 從行事曆送出時，送完要回到原本那一天 #}
+          <input type="hidden" name="back_to" value="{{ request.path }}">
           <button class="btn btn--success btn--block" type="submit" data-busy-text="送出中…">
             {% if status == AssignmentStatus.REJECTED.value %}我再試一次！{% else %}我完成了！{% endif %}
           </button>

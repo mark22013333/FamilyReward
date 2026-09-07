@@ -87,6 +87,55 @@
   {% endif %}
 </section>
 
+{% if makeup_assignments %}
+<section class="section">
+  <h2 class="section__title">🕒 前幾天還沒完成的</h2>
+  <p class="text-small text-soft">
+    忘記按也沒關係！{{ makeup_days }} 天內都還可以補喔 💪
+  </p>
+
+  <div class="stack stagger">
+    {% for assignment in makeup_assignments %}
+      <div class="card task-card--makeup">
+        <div class="task-card">
+          <span class="task-card__icon" aria-hidden="true">
+            {{ assignment.task_icon_snapshot }}
+          </span>
+
+          <div class="task-card__body">
+            <div class="task-card__title">{{ assignment.task_title_snapshot }}</div>
+            <div class="row" style="gap: var(--space-xs);">
+              <span class="badge badge--muted">
+                {{ assignment.assignment_date.strftime('%m/%d') }}
+                {% set days_ago = (today - assignment.assignment_date).days %}
+                {% if days_ago == 1 %}（昨天）{% else %}（{{ days_ago }} 天前）{% endif %}
+              </span>
+              <span class="badge badge--points">+{{ assignment.points_snapshot }} ⭐</span>
+            </div>
+            {% if assignment.rejection_reason %}
+              <p class="text-small mt-md mb-0">💬 {{ assignment.rejection_reason }}</p>
+            {% endif %}
+          </div>
+
+          <div class="task-card__action">
+            <form method="post"
+                  action="{{ url_for('child.submit_task', assignment_id=assignment.id) }}"
+                  data-once>
+              {{ form.hidden_tag() }}
+              <input type="hidden" name="back_to" value="{{ request.path }}">
+              <button class="btn btn--success btn--block" type="submit"
+                      data-busy-text="送出中…">
+                我有做！補送出
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 {% if next_reward %}
 <section class="section">
   <h2 class="section__title">🎁 下一個禮物</h2>

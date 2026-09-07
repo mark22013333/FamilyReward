@@ -229,3 +229,182 @@ def test_calendar_day_detail_page(client, child, task, today, admin_user, login_
 
     assert "整理玩具" in body
     assert "+2" in body
+
+
+# --------------------------------------------------------------------------
+# 補送出前幾天的任務（HTTP 層）
+# --------------------------------------------------------------------------
+
+
+def test_dashboard_shows_missed_tasks(client, child, task, today, login_child):
+    """昨天沒開過網站 → 今天首頁要出現「前幾天還沒完成的」。"""
+    from datetime import timedelta
+
+    login_child(child.id)
+    body = client.get("/child/dashboard").get_data(as_text=True)
+
+    assert "前幾天還沒完成的" in body
+    assert "我有做！補送出" in body
+    yesterday = today - timedelta(days=1)
+    assert yesterday.strftime("%m/%d") in body
+    assert "（昨天）" in body
+
+
+def test_makeup_submit_via_dashboard(client, child, task, today, login_child):
+    """從首頁補送出昨天的任務。"""
+    from datetime import timedelta
+
+    from family_reward.services import assignment_service
+
+    yesterday = today - timedelta(days=1)
+    login_child(child.id)
+    client.get("/child/dashboard")  # 觸發補建
+
+    assignment = assignment_service.list_assignments(child.id, yesterday)[0]
+    response = client.post(
+        f"/child/tasks/{assignment.id}/submit",
+        data={"back_to": "/child/dashboard"},
+        follow_redirects=True,
+    )
+
+    body = response.get_data(as_text=True)
+    assert "收到啦" in body
+    assert yesterday.strftime("%m/%d") in body
+
+    from family_reward.extensions import db as _db
+
+    _db.session.refresh(assignment)
+    assert assignment.status == AssignmentStatus.WAITING_APPROVAL.value
+
+
+def test_makeup_disappears_from_list_after_submit(
+    client, child, task, today, login_child
+):
+    """補送出之後就不該再出現在「還沒完成」清單。"""
+    from datetime import timedelta
+
+    from family_reward.services import assignment_service
+
+    yesterday = today - timedelta(days=1)
+    login_child(child.id)
+    client.get("/child/dashboard")
+    assignment = assignment_service.list_assignments(child.id, yesterday)[0]
+    client.post(
+        f"/child/tasks/{assignment.id}/submit", follow_redirects=True
+    )
+
+    body = client.get("/child/dashboard").get_data(as_text=True)
+    assert yesterday.strftime("%m/%d") not in body
+
+
+def test_calendar_day_shows_makeup_button(client, child, task, today, login_child):
+    """行事曆點進昨天，也要能補按。"""
+    from datetime import timedelta
+
+    yesterday = today - timedelta(days=1)
+    login_child(child.id)
+
+    body = client.get(f"/child/calendar/{yesterday.isoformat()}").get_data(as_text=True)
+
+    assert "我有做！" in body
+
+
+def test_calendar_day_no_button_beyond_window(client, child, task, today, login_child):
+    """超過期限的那天不該有按鈕。"""
+    from datetime import timedelta
+
+    from family_reward.services import assignment_service
+
+    too_old = today - timedelta(days=assignment_service.MAKEUP_DAYS + 1)
+    login_child(child.id)
+
+    body = client.get(f"/child/calendar/{too_old.isoformat()}").get_data(as_text=True)
+
+    assert "我有做！" not in body
+
+
+def test_makeup_submit_from_calendar_returns_to_calendar(
+    client, child, task, today, login_child
+):
+    """從行事曆送出後要回到那一天，不是跳回首頁。"""
+    from datetime import timedelta
+
+    from family_reward.services import assignment_service
+
+    yesterday = today - timedelta(days=1)
+    login_child(child.id)
+    client.get(f"/child/calendar/{yesterday.isoformat()}")
+    assignment = assignment_service.list_assignments(child.id, yesterday)[0]
+
+    response = client.post(
+        f"/child/tasks/{assignment.id}/submit",
+        data={"back_to": f"/child/calendar/{yesterday.isoformat()}"},
+        follow_redirects=False,
+    )
+
+    assert response.headers["Location"].endswith(f"/child/calendar/{yesterday.isoformat()}")
+
+
+def test_back_to_rejects_external_url(client, child, task, today, login_child):
+    """back_to 只能是站內的小孩頁面，不可以被拿來做 open redirect。"""
+    from family_reward.services import assignment_service
+
+    login_child(child.id)
+    client.get("/child/dashboard")
+    assignment = assignment_service.list_assignments(child.id, today)[0]
+
+    response = client.post(
+        f"/child/tasks/{assignment.id}/submit",
+        data={"back_to": "https://evil.example.com/steal"},
+        follow_redirects=False,
+    )
+
+    assert "evil.example.com" not in response.headers["Location"]
+    assert response.headers["Location"].endswith("/child/dashboard")
+
+
+def test_makeup_full_flow_earns_points(
+    client, child, task, today, login_child, login_admin
+):
+    """補送出 → 家長批准 → 正常加點。"""
+    from datetime import timedelta
+
+    from family_reward.services import assignment_service
+
+    yesterday = today - timedelta(days=1)
+    login_child(child.id)
+    client.get("/child/dashboard")
+    assignment = assignment_service.list_assignments(child.id, yesterday)[0]
+    client.post(f"/child/tasks/{assignment.id}/submit", follow_redirects=True)
+    client.post("/logout/child", follow_redirects=True)
+
+    login_admin()
+    approvals = client.get("/admin/approvals").get_data(as_text=True)
+    assert "整理玩具" in approvals
+    # 待確認頁要看得出來是哪一天的
+    assert yesterday.strftime("%Y/%m/%d") in approvals
+
+    client.post(
+        f"/admin/assignments/{assignment.id}/approve", follow_redirects=True
+    )
+
+    assert point_service.get_balance(child.id) == 2
+
+
+def test_cannot_makeup_beyond_window_via_http(client, child, task, today, login_child):
+    """直接打 API 想補很久以前的也要被擋。"""
+    from datetime import timedelta
+
+    from family_reward.services import assignment_service
+
+    too_old = today - timedelta(days=assignment_service.MAKEUP_DAYS + 1)
+    assignment_service.ensure_assignments_for_date(child.id, too_old)
+    assignment = assignment_service.list_assignments(child.id, too_old)[0]
+
+    login_child(child.id)
+    body = client.post(
+        f"/child/tasks/{assignment.id}/submit", follow_redirects=True
+    ).get_data(as_text=True)
+
+    assert "超過" in body
+    assert point_service.get_balance(child.id) == 0

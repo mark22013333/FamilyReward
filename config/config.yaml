@@ -54,7 +54,7 @@ admin:
   #
   #   忘記帳號時，可以用這個指令查詢目前的管理員帳號：
   #       .venv\Scripts\python.exe scripts\show_admin.py
-  initial_username: "@Ndjrn3fv"
+  initial_username: "admin"
 
 cloudflare:
   # enabled 的意思是「要不要由 start.bat 自己啟動一個 cloudflared」。

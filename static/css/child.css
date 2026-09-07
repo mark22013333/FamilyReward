@@ -53,3 +53,9 @@
   font-weight: 700;
   font-size: 1.1rem;
 }
+
+/* 補送出的任務卡：用溫和的提示色，不要用紅色（不是在責備小孩） */
+.task-card--makeup {
+  background: #FFFBF0;
+  border-color: #F3DFAE;
+}

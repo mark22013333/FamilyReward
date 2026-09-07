@@ -218,3 +218,164 @@ def test_streak_breaks_on_incomplete_day(db, child, task, today, make_assignment
     db.session.commit()
 
     assert assignment_service.get_streak(child.id, today) == 0
+
+
+# --------------------------------------------------------------------------
+# 補送出前幾天的任務（小孩當天忘記按）
+# --------------------------------------------------------------------------
+
+
+def test_can_submit_yesterdays_task(db, child, task, today):
+    """核心情境：昨天忘記按，今天補按。"""
+    yesterday = today - timedelta(days=1)
+    assignment = assignment_service.ensure_assignments_for_date(child.id, yesterday)[0]
+
+    result = assignment_service.submit_assignment(assignment.id, child, today=today)
+
+    assert result.status == AssignmentStatus.WAITING_APPROVAL.value
+    assert result.assignment_date == yesterday
+
+
+def test_can_submit_within_makeup_window(db, child, task, today):
+    """期限內（含最後一天）都可以補。"""
+    target = today - timedelta(days=assignment_service.MAKEUP_DAYS)
+    assignment = assignment_service.ensure_assignments_for_date(child.id, target)[0]
+
+    result = assignment_service.submit_assignment(assignment.id, child, today=today)
+
+    assert result.status == AssignmentStatus.WAITING_APPROVAL.value
+
+
+def test_cannot_submit_beyond_makeup_window(db, child, task, today):
+    """超過期限就不能補了，要請家長處理。"""
+    too_old = today - timedelta(days=assignment_service.MAKEUP_DAYS + 1)
+    assignment = assignment_service.ensure_assignments_for_date(child.id, too_old)[0]
+
+    with pytest.raises(InvalidStateError, match="超過"):
+        assignment_service.submit_assignment(assignment.id, child, today=today)
+
+    db.session.refresh(assignment)
+    assert assignment.status == AssignmentStatus.TODO.value
+
+
+def test_cannot_submit_future_task(db, child, task, today):
+    """明天的事情不可能今天就完成。"""
+    tomorrow = today + timedelta(days=1)
+    assignment = assignment_service.ensure_assignments_for_date(child.id, tomorrow)[0]
+
+    with pytest.raises(InvalidStateError, match="之後的任務"):
+        assignment_service.submit_assignment(assignment.id, child, today=today)
+
+
+def test_makeup_task_earns_points_normally(db, child, task, today, admin_user):
+    """補送出的任務，家長批准後一樣正常加點。"""
+    yesterday = today - timedelta(days=1)
+    assignment = assignment_service.ensure_assignments_for_date(child.id, yesterday)[0]
+    assignment_service.submit_assignment(assignment.id, child, today=today)
+
+    assignment_service.approve_assignment(assignment.id, admin_user.id)
+
+    assert point_service.get_balance(child.id) == 2
+
+
+def test_makeup_submit_is_audited_with_date(db, child, task, today):
+    """稽核紀錄要看得出來這是補送的。"""
+    from family_reward.models import AuditLog
+
+    yesterday = today - timedelta(days=1)
+    assignment = assignment_service.ensure_assignments_for_date(child.id, yesterday)[0]
+    assignment_service.submit_assignment(assignment.id, child, today=today)
+
+    log = db.session.execute(
+        db.select(AuditLog).where(AuditLog.action == "SUBMIT_TASK")
+    ).scalar_one()
+
+    assert "補送" in log.description
+
+
+def test_today_submit_not_marked_as_makeup(db, child, task, today):
+    """當天送出的不該被標成補送。"""
+    from family_reward.models import AuditLog
+
+    assignment = assignment_service.ensure_assignments_for_date(child.id, today)[0]
+    assignment_service.submit_assignment(assignment.id, child, today=today)
+
+    log = db.session.execute(
+        db.select(AuditLog).where(AuditLog.action == "SUBMIT_TASK")
+    ).scalar_one()
+
+    assert "補送" not in log.description
+
+
+def test_ensure_makeup_window_backfills_missing_days(db, child, task, today):
+    """小孩前幾天完全沒開過網站時，要能補建那幾天的紀錄。"""
+    assignment_service.ensure_makeup_window(child.id, today)
+
+    for offset in range(1, assignment_service.MAKEUP_DAYS + 1):
+        day = today - timedelta(days=offset)
+        assert len(assignment_service.list_assignments(child.id, day)) == 1
+
+
+def test_ensure_makeup_window_does_not_go_too_far_back(db, child, task, today):
+    """不可以憑空生出更早以前的歷史紀錄。"""
+    assignment_service.ensure_makeup_window(child.id, today)
+
+    too_old = today - timedelta(days=assignment_service.MAKEUP_DAYS + 1)
+    assert assignment_service.list_assignments(child.id, too_old) == []
+
+
+def test_list_makeup_assignments_only_incomplete(db, child, task, today, admin_user):
+    """已完成或已送出的不該出現在「還沒完成」清單。"""
+    assignment_service.ensure_makeup_window(child.id, today)
+    yesterday = today - timedelta(days=1)
+    done = assignment_service.list_assignments(child.id, yesterday)[0]
+    assignment_service.submit_assignment(done.id, child, today=today)
+
+    pending = assignment_service.list_makeup_assignments(child.id, today)
+
+    assert done.id not in [a.id for a in pending]
+    # 其他天的仍然在清單裡
+    assert len(pending) == assignment_service.MAKEUP_DAYS - 1
+
+
+def test_list_makeup_assignments_excludes_today(db, child, task, today):
+    """今天的任務屬於「今天的任務」區塊，不該重複出現在補送清單。"""
+    assignment_service.ensure_assignments_for_date(child.id, today)
+    assignment_service.ensure_makeup_window(child.id, today)
+
+    pending = assignment_service.list_makeup_assignments(child.id, today)
+
+    assert all(a.assignment_date < today for a in pending)
+
+
+def test_list_makeup_includes_rejected(db, child, task, today, admin_user):
+    """被退回的過去任務也應該可以再補送。"""
+    yesterday = today - timedelta(days=1)
+    assignment = assignment_service.ensure_assignments_for_date(child.id, yesterday)[0]
+    assignment_service.submit_assignment(assignment.id, child, today=today)
+    assignment_service.reject_assignment(assignment.id, admin_user.id, "再檢查一下")
+
+    pending = assignment_service.list_makeup_assignments(child.id, today)
+
+    assert assignment.id in [a.id for a in pending]
+
+
+def test_can_make_up_helper(db, child, task, today):
+    """畫面用來決定要不要顯示補按按鈕。"""
+    yesterday = today - timedelta(days=1)
+    recent = assignment_service.ensure_assignments_for_date(child.id, yesterday)[0]
+    too_old = assignment_service.ensure_assignments_for_date(
+        child.id, today - timedelta(days=assignment_service.MAKEUP_DAYS + 1)
+    )[0]
+
+    assert assignment_service.can_make_up(recent, today) is True
+    assert assignment_service.can_make_up(too_old, today) is False
+
+
+def test_child_cannot_make_up_other_childs_task(db, child, other_child, task, today):
+    """補送一樣要做物件層級授權。"""
+    yesterday = today - timedelta(days=1)
+    assignment = assignment_service.ensure_assignments_for_date(child.id, yesterday)[0]
+
+    with pytest.raises(PermissionDeniedError):
+        assignment_service.submit_assignment(assignment.id, other_child, today=today)

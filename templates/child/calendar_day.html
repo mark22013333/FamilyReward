@@ -32,9 +32,23 @@
               {% endif %}
             </div>
           </div>
-          <span class="ledger-item__points {% if assignment.earned_points > 0 %}ledger-item__points--plus{% endif %}">
-            {% if assignment.earned_points > 0 %}+{{ assignment.earned_points }}{% else %}—{% endif %}
-          </span>
+          {% if assignment.id in makeup_ids %}
+            {# 還在補送期限內：可以現在補按 #}
+            <form method="post"
+                  action="{{ url_for('child.submit_task', assignment_id=assignment.id) }}"
+                  data-once>
+              {{ form.hidden_tag() }}
+              <input type="hidden" name="back_to" value="{{ request.path }}">
+              <button class="btn btn--success btn--small" type="submit"
+                      data-busy-text="送出中…">
+                我有做！
+              </button>
+            </form>
+          {% else %}
+            <span class="ledger-item__points {% if assignment.earned_points > 0 %}ledger-item__points--plus{% endif %}">
+              {% if assignment.earned_points > 0 %}+{{ assignment.earned_points }}{% else %}—{% endif %}
+            </span>
+          {% endif %}
         </div>
       {% endfor %}
     </div>
