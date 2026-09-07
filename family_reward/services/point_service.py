@@ -44,6 +44,12 @@ from ..utils.timezone import to_local
 from . import audit_service
 
 
+#: 超過這個點數就不畫星星、改用進度條。
+#: 這是版面事實而不是家庭政策（5 格一列，20 點剛好 4 列），
+#: 所以放程式常數、不開放設定 —— 比照 admin_service.MIN_PASSWORD_LENGTH。
+STAMP_GRID_MAX = 20
+
+
 @dataclass(frozen=True)
 class CardProgress:
     """集點卡進度（以 Lifetime Earned 計算）。"""
@@ -63,6 +69,14 @@ class CardProgress:
     @property
     def is_complete(self) -> bool:
         return self.current_points == 0 and self.completed_cards > 0
+
+    @property
+    def use_stamp_grid(self) -> bool:
+        """是否用星星呈現。
+
+        點數太多時改用進度條，否則幾十顆星星會把版面撐得又長又擠。
+        """
+        return self.points_per_card <= STAMP_GRID_MAX
 
 
 def get_balance(child_id: int) -> int:

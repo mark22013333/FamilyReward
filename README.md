@@ -200,7 +200,7 @@ database:
   path: "./data/family-reward.db"
 
 reward:
-  points_per_card: 10          # 幾點算一張集點卡
+  points_per_card: 10          # 幾點算一張集點卡（只在第一次建立資料庫時生效）
   allow_negative_balance: false # 是否允許餘額為負
 
 security:
@@ -236,6 +236,27 @@ ui:
 
 啟動時會檢查設定合法性，例如 `points_per_card` 設成 0 會直接拒絕啟動並顯示原因。
 
+### 修改集點卡點數
+
+**後台 → ⚙️ 設定 → 🎯 集點卡**，可設 1 ~ 100 點，**改完立即生效、不用重新啟動**。
+
+畫面會在儲存前先告訴你影響，例如：
+
+```
+椪柑（累積 23 ⭐）：目前完成 2 張 → 會變成 1 張（第 2 張 3/20）
+```
+
+> **`config.yaml` 的 `reward.points_per_card` 只是第一次建立資料庫時的種子**
+>
+> 資料庫建立之後，改設定檔**不會**生效 —— 以資料庫為準。
+> 若兩者不一致，啟動時的 log 會提出警告。這和 `admin.initial_username`
+> 的處理方式一致：設定檔不應該有能力覆寫你在後台改過的東西。
+
+集點卡進度一律由「歷史累積取得的點數」即時計算，所以改了設定之後已完成的張數
+會跟著重算。這個動作**可以還原** —— 把數字改回去，張數就會回來。
+
+超過 20 點時，小朋友畫面上的星星會自動換成進度條（否則幾十顆星星會把版面撐爆）。
+
 ### 修改連接埠（Port）
 
 改 `config\config.yaml` 的 `server.port`，然後重新啟動：
@@ -258,6 +279,7 @@ server:
 |---|---|---|
 | 管理員帳號 | `config.yaml` 的 `admin.initial_username` | **只有第一次建立帳號時**；之後請在後台改 |
 | 管理員初始密碼 | `.env` 的 `ADMIN_INITIAL_PASSWORD` | **只有第一次建立帳號時**；之後請在後台改 |
+| 集點卡點數 | **後台 → ⚙️ 設定 → 🎯 集點卡** | **立即** |
 | 小孩 PIN 位數 | `config.yaml` 的 `security.child_pin_length` | 重新啟動後 |
 | 小孩 PIN | 後台 → 👧 小孩 → 修改 | 立即 |
 
@@ -1099,7 +1121,8 @@ tasklist | findstr <上面查到的 PID>
 ### 忘記 Admin Password
 
 ```bat
-.venv\Scripts\python.exe scriptseset_admin_password.py
+.venv\Scripts\python.exe scripts
+eset_admin_password.py
 ```
 
 會互動式詢問新密碼（輸入時不顯示），並寫入稽核紀錄。

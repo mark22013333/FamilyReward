@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from .achievement import Achievement, ChildAchievement
 from .admin_user import AdminUser
+from .app_setting import AppSetting
 from .audit_log import AuditLog
 from .child import Child
 from .enums import (
@@ -39,6 +40,7 @@ __all__ = [
     "Achievement",
     "ChildAchievement",
     "AdminUser",
+    "AppSetting",
     "AuditLog",
     "Child",
     "Notification",

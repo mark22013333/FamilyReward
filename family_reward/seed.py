@@ -17,7 +17,7 @@ from flask import Flask
 from .config import Settings
 from .extensions import db
 from .models import Child, Reward, RepeatType, Task, TaskAssignee, TaskCategory
-from .services import achievement_service, admin_service
+from .services import achievement_service, admin_service, settings_service
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,11 @@ def initialize(app: Flask) -> None:
             )
 
         achievement_service.ensure_definitions()
+
+        # config.yaml 的值只是第一次建立資料庫時的種子，之後以資料庫為準。
+        settings_service.ensure_defaults(settings.reward.points_per_card)
+        settings_service.warn_if_config_ignored(settings.reward.points_per_card)
+
         logger.info("Application initialized successfully")
 
 

@@ -31,6 +31,7 @@ from ..services import (
     point_service,
     redemption_service,
     reward_service,
+    settings_service,
 )
 from ..utils.timezone import today_local
 
@@ -42,7 +43,12 @@ def _tz() -> str:
 
 
 def _points_per_card() -> int:
-    return current_app.settings.reward.points_per_card  # type: ignore[attr-defined]
+    """讀取目前的集點卡點數。
+
+    每個 request 都重新讀資料庫，所以家長在後台改了之後
+    下一次載入頁面就會生效，不需要重新啟動。
+    """
+    return settings_service.get_points_per_card()
 
 
 @child_bp.route("/dashboard")

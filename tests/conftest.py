@@ -33,7 +33,11 @@ from family_reward.models import (
     TaskCategory,
 )
 from family_reward.security.rate_limit import login_throttle
-from family_reward.services import achievement_service, admin_service
+from family_reward.services import (
+    achievement_service,
+    admin_service,
+    settings_service,
+)
 
 ADMIN_USERNAME = "testadmin"
 ADMIN_PASSWORD = "testpassword123"
@@ -79,6 +83,9 @@ def app(settings: Settings):  # noqa: ANN201
         _db.create_all()
         admin_service.ensure_initial_admin(ADMIN_USERNAME, ADMIN_PASSWORD)
         achievement_service.ensure_definitions()
+        # 這個 fixture 沒有走 seed.initialize()，所以要自己補上設定的種子，
+        # 否則每個測試都會走「資料列不存在」的 fallback 分支（測錯路徑）。
+        settings_service.ensure_defaults(settings.reward.points_per_card)
 
     login_throttle.reset()
 

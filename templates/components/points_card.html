@@ -5,15 +5,27 @@
 <div class="points-card" data-points-card>
   <h2 class="mb-0">🎯 我的集點卡</h2>
 
-  <div class="stamp-grid">
-    {% for i in range(card.points_per_card) %}
-      {% if i < card.current_points %}
-        <span class="stamp stamp--filled" aria-hidden="true">⭐</span>
-      {% else %}
-        <span class="stamp" aria-hidden="true">○</span>
-      {% endif %}
-    {% endfor %}
-  </div>
+  {% if card.use_stamp_grid %}
+    <div class="stamp-grid">
+      {% for i in range(card.points_per_card) %}
+        {% if i < card.current_points %}
+          <span class="stamp stamp--filled" aria-hidden="true">⭐</span>
+        {% else %}
+          <span class="stamp" aria-hidden="true">○</span>
+        {% endif %}
+      {% endfor %}
+    </div>
+  {% else %}
+    {# 點數太多時畫幾十顆星星會把版面撐爆，改用進度條。
+       重用小孩 dashboard「今日進度」的樣式，視覺自然一致。 #}
+    <div style="font-size: 2.6rem; line-height: 1; margin-top: var(--space-md);"
+         aria-hidden="true">⭐</div>
+    <div class="progress" style="height: 20px; margin: var(--space-md) auto;"
+         role="img"
+         aria-label="集點進度 {{ card.current_points }} / {{ card.points_per_card }}">
+      <div class="progress__bar" style="width: {{ card.percent }}%;"></div>
+    </div>
+  {% endif %}
 
   <p class="text-bold" style="font-size: 1.2rem;">
     {{ card.current_points }} / {{ card.points_per_card }}

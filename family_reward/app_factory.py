@@ -96,7 +96,6 @@ def _configure_flask(app: Flask, settings: Settings) -> None:
         JSON_AS_ASCII=False,
         APP_NAME=settings.app.name,
         TIMEZONE=settings.app.timezone,
-        POINTS_PER_CARD=settings.reward.points_per_card,
         DEBUG=settings.app.debug and not settings.is_production,
         SEND_FILE_MAX_AGE_DEFAULT=(
             timedelta(days=7) if settings.is_production else timedelta(seconds=0)
@@ -182,7 +181,6 @@ def _configure_jinja(app: Flask, settings: Settings) -> None:
     def inject_globals():  # noqa: ANN202
         return {
             "app_name": settings.app.name,
-            "points_per_card": settings.reward.points_per_card,
             "today": today_local(tz),
             "current_child": get_current_child(),
             "admin_logged_in": is_admin_logged_in(),

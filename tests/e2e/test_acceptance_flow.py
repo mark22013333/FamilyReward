@@ -462,3 +462,83 @@ def test_no_horizontal_scroll_on_mobile(page: Page, live_server: str) -> None:
             "document.documentElement.scrollWidth - document.documentElement.clientWidth"
         )
         assert overflow <= 1, f"{path} 出現橫向捲動（超出 {overflow}px）"
+
+
+# --------------------------------------------------------------------------
+# 後台修改集點卡點數（真瀏覽器）
+# --------------------------------------------------------------------------
+
+
+def _set_points_per_card(page: Page, base_url: str, value: int) -> None:
+    """在後台把集點卡點數改成 value。呼叫前必須已經是 admin 身分。"""
+    page.goto(f"{base_url}/admin/settings")
+    page.fill("#points_per_card", str(value))
+    page.get_by_role("button", name="儲存集點卡設定").click()
+    expect(page.locator(".flash")).to_contain_text(f"已改成 {value} 點一張")
+
+
+@pytest.mark.e2e
+def test_admin_can_change_points_per_card(
+    page: Page, live_server: str, page_errors: list[str]
+) -> None:
+    """改成 5 點 → 小孩畫面立刻變成 5 顆星星。
+
+    live_server 是 session scope 且測試之間不重置資料庫，
+    所以結束時「一定」要改回 10，否則會弄壞其他斷言 10 點的測試。
+    """
+    base_url = live_server
+
+    try:
+        admin_login(page, base_url)
+
+        # 即時預覽（JS）要能運作
+        page.goto(f"{base_url}/admin/settings")
+        expect(page.locator("[data-card-preview]")).to_be_visible()
+        page.fill("#points_per_card", "5")
+        expect(page.locator("[data-preview-after]").first).to_contain_text("會變成")
+
+        page.get_by_role("button", name="儲存集點卡設定").click()
+        expect(page.locator(".flash")).to_contain_text("已改成 5 點一張")
+
+        admin_logout(page, base_url)
+        child_login(page, base_url)
+
+        points_card = page.locator(".points-card")
+        expect(points_card).to_contain_text("/ 5")
+        # 5 點 → 5 顆星星
+        expect(page.locator(".points-card .stamp")).to_have_count(5)
+
+        assert page_errors == [], f"頁面出現錯誤：{page_errors}"
+
+    finally:
+        child_logout(page, base_url)
+        admin_login(page, base_url)
+        _set_points_per_card(page, base_url, 10)
+        admin_logout(page, base_url)
+
+
+@pytest.mark.e2e
+def test_large_points_per_card_uses_progress_bar(
+    page: Page, live_server: str
+) -> None:
+    """改成 50 點 → 改用進度條而不是 50 顆星星。"""
+    base_url = live_server
+
+    try:
+        admin_login(page, base_url)
+        _set_points_per_card(page, base_url, 50)
+        admin_logout(page, base_url)
+
+        child_login(page, base_url)
+
+        points_card = page.locator(".points-card")
+        expect(points_card).to_contain_text("/ 50")
+        # 星星消失、進度條出現
+        expect(page.locator(".points-card .stamp")).to_have_count(0)
+        expect(page.locator(".points-card .progress__bar")).to_have_count(1)
+
+    finally:
+        child_logout(page, base_url)
+        admin_login(page, base_url)
+        _set_points_per_card(page, base_url, 10)
+        admin_logout(page, base_url)

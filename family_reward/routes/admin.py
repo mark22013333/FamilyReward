@@ -26,6 +26,7 @@ from ..forms import (
     ChildForm,
     ConfirmForm,
     PointAdjustmentForm,
+    PointsPerCardForm,
     RejectForm,
     RewardForm,
     TaskForm,
@@ -41,6 +42,7 @@ from ..services import (
     point_service,
     redemption_service,
     reward_service,
+    settings_service,
     task_service,
 )
 from ..utils.timezone import today_local
@@ -569,14 +571,14 @@ def points():  # noqa: ANN201
             flash(exc.message, "error")
 
     balances = point_service.get_balances_for_children([c.id for c in children])
+    # 讀一次就好，不要在迴圈裡重複查（比照 get_balances_for_children 的做法）。
+    points_per_card = settings_service.get_points_per_card()
     summary = [
         {
             "child": child,
             "balance": balances.get(child.id, 0),
             "lifetime": point_service.get_lifetime_earned(child.id),
-            "card": point_service.get_card_progress(
-                child.id, _settings().reward.points_per_card
-            ),
+            "card": point_service.get_card_progress(child.id, points_per_card),
         }
         for child in children
     ]
@@ -621,6 +623,28 @@ def settings_page():  # noqa: ANN201
 
     username_form = ChangeUsernameForm()
     password_form = ChangePasswordForm()
+    points_card_form = PointsPerCardForm()
+
+    if action == "change_points_per_card" and points_card_form.validate_on_submit():
+        try:
+            new_value = int(points_card_form.points_per_card.data or 0)
+            # 先算好影響，才能在成功訊息裡告訴家長實際結果。
+            previews = settings_service.preview_points_per_card_change(new_value)
+            settings_service.set_points_per_card(
+                new_value,
+                admin_id=current_user.id,
+                admin_name=current_user.username,
+            )
+            effect = "、".join(
+                f"{p.child_name} 完成 {p.after_cards} 張" for p in previews
+            )
+            flash(
+                f"已改成 {new_value} 點一張集點卡。" + (effect if effect else ""),
+                "success",
+            )
+            return redirect(url_for("admin.settings_page"))
+        except AppError as exc:
+            flash(exc.message, "error")
 
     if action == "change_username" and username_form.validate_on_submit():
         try:
@@ -649,10 +673,27 @@ def settings_page():  # noqa: ANN201
 
     backups = backup_service.list_backups(settings.backup.directory)
 
+    current_points_per_card = settings_service.get_points_per_card()
+
+    # GET（或其他表單送出失敗重新渲染）時預填目前的值；
+    # 若是這個表單本身驗證失敗，保留家長剛才輸入的內容，錯誤訊息才對得上。
+    if not points_card_form.is_submitted():
+        points_card_form.points_per_card.data = current_points_per_card
+
+    # 「改了會怎樣」的現狀資料。伺服器先算好，沒有 JS 也看得到。
+    card_previews = settings_service.preview_points_per_card_change(
+        current_points_per_card
+    )
+
     return render_template(
         "admin/settings.html",
         username_form=username_form,
         password_form=password_form,
+        points_card_form=points_card_form,
+        current_points_per_card=current_points_per_card,
+        card_previews=card_previews,
+        points_per_card_min=settings_service.MIN_POINTS_PER_CARD,
+        points_per_card_max=settings_service.MAX_POINTS_PER_CARD,
         confirm_form=ConfirmForm(),
         backups=backups[:20],
         settings=settings,

@@ -98,6 +98,23 @@ class ChangePasswordForm(FlaskForm):
     submit = SubmitField("修改密碼")
 
 
+class PointsPerCardForm(FlaskForm):
+    """集點卡設定。
+
+    上限刻意不設太高 —— 集點卡是給小孩看的，設成 9999 等於永遠集不滿。
+    """
+
+    points_per_card = IntegerField(
+        "幾點集滿一張集點卡",
+        validators=[
+            InputRequired(message="請填寫幾點集滿一張集點卡"),
+            NumberRange(min=1, max=100, message="必須介於 1 ~ 100 點"),
+        ],
+        default=10,
+    )
+    submit = SubmitField("儲存集點卡設定")
+
+
 class ChildForm(FlaskForm):
     name = StringField(
         "名字",

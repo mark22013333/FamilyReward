@@ -222,3 +222,53 @@ def test_balances_for_children_batch_query(db, child, other_child, admin_user):
     balances = point_service.get_balances_for_children([child.id, other_child.id])
     assert balances[child.id] == 7
     assert balances[other_child.id] == 0
+
+
+# --------------------------------------------------------------------------
+# 集點卡顯示方式的門檻（星星 vs 進度條）
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("points_per_card", "expect_stamps"),
+    [(1, True), (10, True), (20, True), (21, False), (50, False), (100, False)],
+)
+def test_use_stamp_grid_threshold(db, child, points_per_card, expect_stamps):
+    """20 點以內用星星，超過改用進度條（否則版面會被撐爆）。"""
+    card = point_service.get_card_progress(child.id, points_per_card)
+
+    assert card.use_stamp_grid is expect_stamps
+
+
+def test_card_progress_recomputes_from_lifetime_on_new_setting(db, child, admin_user):
+    """改變點數設定後，張數直接由 lifetime 重算（刻意不保留舊的張數）。
+
+    這個測試同時是「直接重算」這個設計決策的可執行規格。
+    """
+    point_service.adjust_points(
+        child_id=child.id, points=23, reason="測試", admin_id=admin_user.id
+    )
+
+    at_ten = point_service.get_card_progress(child.id, 10)
+    at_five = point_service.get_card_progress(child.id, 5)
+    at_fifty = point_service.get_card_progress(child.id, 50)
+
+    assert (at_ten.completed_cards, at_ten.current_points) == (2, 3)
+    assert (at_five.completed_cards, at_five.current_points) == (4, 3)
+    assert (at_fifty.completed_cards, at_fifty.current_points) == (0, 23)
+
+    # lifetime 本身完全不受設定影響
+    assert at_ten.lifetime_earned == at_five.lifetime_earned == 23
+
+
+def test_card_progress_change_is_reversible(db, child, admin_user):
+    """改回原本的數字，張數就完全回來 —— 沒有資料被破壞。"""
+    point_service.adjust_points(
+        child_id=child.id, points=23, reason="測試", admin_id=admin_user.id
+    )
+
+    before = point_service.get_card_progress(child.id, 10)
+    point_service.get_card_progress(child.id, 50)  # 中間改成 50
+    after = point_service.get_card_progress(child.id, 10)
+
+    assert before == after

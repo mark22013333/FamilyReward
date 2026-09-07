@@ -27,7 +27,12 @@ database:
   path: "./data/family-reward.db"
 
 reward:
-  points_per_card: 10           # 幾點集滿一張集點卡
+  # ★ 幾點集滿一張集點卡。
+  #
+  #   注意：這個值「只在第一次建立資料庫時」生效，之後以資料庫為準。
+  #   要修改請登入後台：⚙️ 設定 → 🎯 集點卡
+  #   （改這裡不會生效；若與實際不符，啟動時的 log 會提出警告。）
+  points_per_card: 10
   allow_negative_balance: false # 是否允許點數餘額變成負數
 
 security:

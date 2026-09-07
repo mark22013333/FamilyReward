@@ -159,6 +159,7 @@ class AuditAction(StrEnum):
 
     BACKUP_DATABASE = "BACKUP_DATABASE"
     CREATE_ADMIN = "CREATE_ADMIN"
+    UPDATE_APP_SETTING = "UPDATE_APP_SETTING"
 
 
 class Theme(StrEnum):
