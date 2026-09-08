@@ -379,3 +379,120 @@ def test_child_cannot_make_up_other_childs_task(db, child, other_child, task, to
 
     with pytest.raises(PermissionDeniedError):
         assignment_service.submit_assignment(assignment.id, other_child, today=today)
+
+
+# --------------------------------------------------------------------------
+# 日期區間查詢（匯出／獎狀用）
+# --------------------------------------------------------------------------
+
+
+def test_list_assignments_in_range_inclusive(db, child, task, today, make_assignment):
+    """區間含頭含尾。"""
+    for offset in (0, 1, 2, 3):
+        make_assignment(task, child, today - timedelta(days=offset))
+
+    rows = assignment_service.list_assignments_in_range(
+        child.id, today - timedelta(days=2), today
+    )
+
+    assert [r.assignment_date for r in rows] == [
+        today - timedelta(days=2),
+        today - timedelta(days=1),
+        today,
+    ]
+
+
+def test_list_assignments_in_range_all_children(
+    db, child, other_child, task, today, make_assignment
+):
+    make_assignment(task, child, today)
+    make_assignment(task, other_child, today)
+
+    rows = assignment_service.list_assignments_in_range(None, today, today)
+
+    assert {r.child_id for r in rows} == {child.id, other_child.id}
+
+
+def test_list_assignments_in_range_creates_nothing(db, child, task, today):
+    """純度測試：絕不能誤接 ensure_assignments_for_date。
+
+    對一個從來沒開過的日期查詢，不該憑空產生任務紀錄。
+    """
+    from family_reward.models import TaskAssignment
+
+    long_ago = today - timedelta(days=90)
+    assignment_service.list_assignments_in_range(child.id, long_ago, long_ago)
+
+    count = db.session.execute(
+        db.select(db.func.count(TaskAssignment.id))
+    ).scalar_one()
+    assert count == 0
+
+
+def test_get_top_tasks_counts_only_approved(
+    db, child, task, today, admin_user, make_assignment
+):
+    """只算真的通過確認的。"""
+    approved = make_assignment(task, child, today - timedelta(days=1))
+    approved.status = AssignmentStatus.APPROVED.value
+    pending = make_assignment(task, child, today)
+    pending.status = AssignmentStatus.WAITING_APPROVAL.value
+    db.session.commit()
+
+    top = assignment_service.get_top_tasks_in_range(
+        child.id, today - timedelta(days=7), today
+    )
+
+    assert top == [("整理玩具", "🧸", 1)]
+
+
+def test_get_top_tasks_respects_limit(db, child, today, make_assignment):
+    """多個任務時依次數排序並尊重 limit。"""
+    from family_reward.models import RepeatType, Task, TaskAssignee, TaskCategory
+
+    # 建三個任務，完成次數分別 3/2/1
+    for index, (title, times) in enumerate(
+        [("任務A", 3), ("任務B", 2), ("任務C", 1)]
+    ):
+        item = Task(
+            title=title,
+            icon="⭐",
+            points=1,
+            category=TaskCategory.OTHER.value,
+            repeat_type=RepeatType.DAILY.value,
+            active=True,
+        )
+        db.session.add(item)
+        db.session.flush()
+        db.session.add(TaskAssignee(task_id=item.id, child_id=child.id))
+        db.session.commit()
+        for day_offset in range(times):
+            a = make_assignment(item, child, today - timedelta(days=day_offset))
+            a.status = AssignmentStatus.APPROVED.value
+        db.session.commit()
+
+    top = assignment_service.get_top_tasks_in_range(
+        child.id, today - timedelta(days=7), today, limit=2
+    )
+
+    assert [(t[0], t[2]) for t in top] == [("任務A", 3), ("任務B", 2)]
+
+
+def test_get_top_tasks_uses_snapshot_after_rename(
+    db, child, task, today, make_assignment
+):
+    """任務改名後，歷史統計仍顯示當時的名稱。"""
+    a = make_assignment(task, child, today)
+    a.status = AssignmentStatus.APPROVED.value
+    db.session.commit()
+
+    task.title = "改名後的任務"
+    db.session.commit()
+
+    top = assignment_service.get_top_tasks_in_range(child.id, today, today)
+
+    assert top[0][0] == "整理玩具"
+
+
+def test_get_top_tasks_empty_when_no_data(db, child, today):
+    assert assignment_service.get_top_tasks_in_range(child.id, today, today) == []

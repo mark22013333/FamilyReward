@@ -7,9 +7,12 @@
 from __future__ import annotations
 
 import logging
+from datetime import date
 
 from flask import (
     Blueprint,
+    Response,
+    abort,
     current_app,
     flash,
     redirect,
@@ -38,7 +41,10 @@ from ..services import (
     assignment_service,
     audit_service,
     backup_service,
+    calendar_service,
+    certificate_service,
     child_service,
+    export_service,
     point_service,
     redemption_service,
     reward_service,
@@ -596,6 +602,206 @@ def points():  # noqa: ANN201
         selected_id=selected_id,
         transactions=transactions,
     )
+
+
+# --------------------------------------------------------------------------
+# 匯出
+# --------------------------------------------------------------------------
+
+
+def _csv_response(payload: bytes, filename: str) -> Response:
+    """回傳 CSV 下載。
+
+    這是專案第一個下載端點，所以順手定下慣例：
+    * 檔名一律 ASCII（HTTP 標頭只能 latin-1）
+    * 明確標 charset=utf-8，配合 export_service 寫入的 BOM
+    """
+    return Response(
+        payload,
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _resolve_export_month() -> tuple[int, int]:
+    """從 query string 取出要匯出的年月，並做邊界檢查。
+
+    預設「上個月」：沒有人會在三月當下匯出三月的完整紀錄。
+    """
+    today = today_local(_tz())
+    default_year, default_month = _previous_month(today)
+
+    try:
+        year = int(request.args.get("year", default_year))
+        month = int(request.args.get("month", default_month))
+    except (TypeError, ValueError):
+        abort(400)
+
+    # 和 api.calendar 用同一組邊界
+    if not (1 <= month <= 12) or not (2000 <= year <= 2100):
+        abort(400)
+
+    return year, month
+
+
+def _previous_month(today: date) -> tuple[int, int]:
+    """回傳上個月的 (year, month)。"""
+    if today.month == 1:
+        return today.year - 1, 12
+    return today.year, today.month - 1
+
+
+def _audit_export(kind: str, start: date, end: date, child_id: int | None) -> None:
+    """記錄匯出動作。
+
+    資料匯出是「資料離開這台機器」的事件，值得留下軌跡 ——
+    比照 create_backup() 也會寫稽核紀錄的先例。
+    """
+    scope = f"（{child_id} 號小孩）" if child_id is not None else "（全部小孩）"
+    audit_service.record(
+        AuditAction.EXPORT_DATA,
+        actor_type=ActorType.ADMIN,
+        actor_id=current_user.id,
+        actor_name=current_user.username,
+        entity_type="EXPORT",
+        description=f"匯出 {kind} {start.isoformat()} ~ {end.isoformat()} {scope}",
+    )
+    from ..extensions import db
+
+    db.session.commit()
+
+
+@admin_bp.route("/export")
+def export_page():  # noqa: ANN201
+    """匯出頁面：選月份、選小孩。"""
+    today = today_local(_tz())
+    year, month = _resolve_export_month()
+
+    # 提供最近 12 個月的選項
+    months: list[tuple[int, int]] = []
+    cursor_year, cursor_month = today.year, today.month
+    for _ in range(12):
+        months.append((cursor_year, cursor_month))
+        cursor_year, cursor_month = _previous_month(
+            date(cursor_year, cursor_month, 1)
+        )
+
+    return render_template(
+        "admin/export.html",
+        children=child_service.list_children(only_active=False),
+        months=months,
+        selected_year=year,
+        selected_month=month,
+    )
+
+
+@admin_bp.route("/export/points.csv")
+def export_points_csv():  # noqa: ANN201
+    """點數帳本 CSV。"""
+    year, month = _resolve_export_month()
+    child_id = request.args.get("child_id", type=int)
+    start, end = calendar_service.month_range(year, month)
+
+    transactions = point_service.list_transactions_in_range(
+        child_id, start, end, _tz()
+    )
+    payload = export_service.to_csv_bytes(
+        export_service.POINTS_HEADER,
+        export_service.build_points_rows(transactions, _tz()),
+    )
+
+    _audit_export("點數紀錄", start, end, child_id)
+    return _csv_response(
+        payload, export_service.build_filename("points", start, end, child_id)
+    )
+
+
+@admin_bp.route("/export/tasks.csv")
+def export_tasks_csv():  # noqa: ANN201
+    """任務完成明細 CSV。"""
+    year, month = _resolve_export_month()
+    child_id = request.args.get("child_id", type=int)
+    start, end = calendar_service.month_range(year, month)
+
+    assignments = assignment_service.list_assignments_in_range(child_id, start, end)
+    payload = export_service.to_csv_bytes(
+        export_service.TASKS_HEADER,
+        export_service.build_tasks_rows(assignments, _tz()),
+    )
+
+    _audit_export("任務紀錄", start, end, child_id)
+    return _csv_response(
+        payload, export_service.build_filename("tasks", start, end, child_id)
+    )
+
+
+@admin_bp.route("/export/redemptions.csv")
+def export_redemptions_csv():  # noqa: ANN201
+    """禮物兌換紀錄 CSV。"""
+    year, month = _resolve_export_month()
+    child_id = request.args.get("child_id", type=int)
+    start, end = calendar_service.month_range(year, month)
+
+    redemptions = redemption_service.list_redemptions_in_range(child_id, start, end)
+    payload = export_service.to_csv_bytes(
+        export_service.REDEMPTIONS_HEADER,
+        export_service.build_redemptions_rows(redemptions, _tz()),
+    )
+
+    _audit_export("兌換紀錄", start, end, child_id)
+    return _csv_response(
+        payload, export_service.build_filename("redemptions", start, end, child_id)
+    )
+
+
+@admin_bp.route("/export/all.zip")
+def export_all_zip():  # noqa: ANN201
+    """全部資料打包成 ZIP（搬家／留存用）。
+
+    這是「資料可攜」的逃生口：即使日後不用這套系統，
+    紀錄仍然是人看得懂的 CSV。
+
+    注意：這**不是備份** —— 不能用來還原系統，那要用 backup.bat。
+    """
+    payload = export_service.build_full_zip(_tz())
+
+    today = today_local(_tz())
+    audit_service.record(
+        AuditAction.EXPORT_DATA,
+        actor_type=ActorType.ADMIN,
+        actor_id=current_user.id,
+        actor_name=current_user.username,
+        entity_type="EXPORT",
+        description="匯出全部資料（ZIP 搬家包）",
+    )
+    from ..extensions import db
+
+    db.session.commit()
+
+    return Response(
+        payload,
+        mimetype="application/zip",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="family-reward-export-{today.isoformat()}.zip"'
+            )
+        },
+    )
+
+
+@admin_bp.route("/children/<int:child_id>/certificate")
+def child_certificate(child_id: int):  # noqa: ANN201
+    """家長版：印出指定小孩的獎狀。
+
+    小孩自己也能印（見 child.certificate），這裡是給家長用的入口。
+    """
+    child = child_service.get_child(child_id)
+    year, month = _resolve_export_month()
+
+    context = certificate_service.build_context(
+        child, year, month, _tz(), _settings().reward.points_per_card
+    )
+    return render_template("child/certificate.html", **context)
 
 
 # --------------------------------------------------------------------------

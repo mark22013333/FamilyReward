@@ -95,6 +95,17 @@ EARNING_TRANSACTION_TYPES: tuple[str, ...] = (
 )
 
 
+#: 畫面與匯出檔案顯示用的中文標籤。
+#: 沒有這個字典的話，CSV 與後台點數頁會印出 EARN / ADJUST 這種原始代碼。
+TRANSACTION_TYPE_LABELS: dict[str, str] = {
+    TransactionType.EARN.value: "完成任務",
+    TransactionType.BONUS.value: "額外獎勵",
+    TransactionType.REDEEM.value: "兌換禮物",
+    TransactionType.ADJUST.value: "家長調整",
+    TransactionType.DEDUCT.value: "扣點",
+}
+
+
 class SourceType(StrEnum):
     TASK_ASSIGNMENT = "TASK_ASSIGNMENT"
     REWARD_REDEMPTION = "REWARD_REDEMPTION"
@@ -160,6 +171,7 @@ class AuditAction(StrEnum):
     BACKUP_DATABASE = "BACKUP_DATABASE"
     CREATE_ADMIN = "CREATE_ADMIN"
     UPDATE_APP_SETTING = "UPDATE_APP_SETTING"
+    EXPORT_DATA = "EXPORT_DATA"
 
 
 class Theme(StrEnum):

@@ -27,6 +27,7 @@ from ..services import (
     achievement_service,
     assignment_service,
     calendar_service,
+    certificate_service,
     notification_service,
     point_service,
     redemption_service,
@@ -277,3 +278,40 @@ def history():  # noqa: ANN201
         achievements=achievements,
         today=today,
     )
+
+
+@child_bp.route("/certificate")
+@child_required
+def certificate():  # noqa: ANN201
+    """我的獎狀（可以列印貼在冰箱上）。
+
+    child_id 只從 session 取，不接受從網址傳進來 —— 見本檔開頭的規則。
+
+    刻意不寫稽核紀錄：這是小孩看自己的頁面，記錄它等於監視。
+    """
+    child = get_current_child()
+    assert child is not None
+    today = today_local(_tz())
+
+    # 預設上個月：沒有人會在三月當下印三月的獎狀。
+    # 月初 5 天內也預設上個月，因為那時候「這個月」還沒什麼內容。
+    default_year, default_month = today.year, today.month
+    if today.day <= 5:
+        if today.month == 1:
+            default_year, default_month = today.year - 1, 12
+        else:
+            default_month = today.month - 1
+
+    try:
+        year = int(request.args.get("year", default_year))
+        month = int(request.args.get("month", default_month))
+    except (TypeError, ValueError):
+        year, month = default_year, default_month
+
+    if not (1 <= month <= 12) or not (2000 <= year <= 2100):
+        year, month = default_year, default_month
+
+    context = certificate_service.build_context(
+        child, year, month, _tz(), _points_per_card()
+    )
+    return render_template("child/certificate.html", **context)

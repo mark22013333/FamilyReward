@@ -1,0 +1,143 @@
+{% extends "admin/_base.html" %}
+
+{% block title %}匯出資料 — {{ app_name }}{% endblock %}
+
+{% block admin_content %}
+<h1 class="section__title">📤 匯出資料</h1>
+
+<div class="alert alert--info">
+  <span aria-hidden="true">ℹ️</span>
+  <div>
+    <strong>匯出</strong>和<strong>備份</strong>是兩件不同的事：
+    <table class="table mt-md" style="min-width: auto;">
+      <tbody>
+        <tr>
+          <th scope="row">匯出（CSV）</th>
+          <td>人看得懂，可以用 Excel 分析。<strong>不能用來還原系統。</strong></td>
+        </tr>
+        <tr>
+          <th scope="row">備份（.db）</th>
+          <td>電腦看得懂，可以完整還原。請用「⚙️ 設定 → 備份」。</td>
+        </tr>
+      </tbody>
+    </table>
+    別把 CSV 當成備份 —— 真正要防資料遺失，請定期備份。
+  </div>
+</div>
+
+<section class="section">
+  <div class="card" style="max-width: 640px;">
+    <form method="get" action="{{ url_for('admin.export_page') }}" class="mb-md">
+      <div class="form-field">
+        <label class="form-label" for="month-select">要匯出哪個月份？</label>
+        <select class="form-select" id="month-select" name="month"
+                onchange="this.form.submit()">
+          {% for year, month in months %}
+            <option value="{{ month }}"
+                    data-year="{{ year }}"
+                    {% if year == selected_year and month == selected_month %}selected{% endif %}>
+              {{ year }} 年 {{ month }} 月
+            </option>
+          {% endfor %}
+        </select>
+        <input type="hidden" name="year" value="{{ selected_year }}" id="year-hidden">
+        <div class="form-hint">預設是上個月（整月的紀錄比較完整）。</div>
+      </div>
+    </form>
+
+    <h3>{{ selected_year }} 年 {{ selected_month }} 月</h3>
+
+    <div class="stack stack--sm mt-md">
+      {% set qs = "year=" ~ selected_year ~ "&month=" ~ selected_month %}
+
+      <div class="row row--between">
+        <div>
+          <div class="text-bold">⭐ 點數紀錄</div>
+          <div class="text-small text-soft">每一筆加點與扣點，可以用 Excel 加總</div>
+        </div>
+        <a class="btn btn--small btn--info"
+           href="{{ url_for('admin.export_points_csv') }}?{{ qs }}">下載 CSV</a>
+      </div>
+
+      <div class="row row--between">
+        <div>
+          <div class="text-bold">📋 任務完成明細</div>
+          <div class="text-small text-soft">哪一天、哪個任務、狀態、拿到幾點</div>
+        </div>
+        <a class="btn btn--small btn--info"
+           href="{{ url_for('admin.export_tasks_csv') }}?{{ qs }}">下載 CSV</a>
+      </div>
+
+      <div class="row row--between">
+        <div>
+          <div class="text-bold">🎁 兌換紀錄</div>
+          <div class="text-small text-soft">何時換了什麼、花了幾點</div>
+        </div>
+        <a class="btn btn--small btn--info"
+           href="{{ url_for('admin.export_redemptions_csv') }}?{{ qs }}">下載 CSV</a>
+      </div>
+    </div>
+
+    <p class="text-small text-soft mt-md mb-0">
+      CSV 已處理成 Excel 可以直接開的格式（UTF-8 BOM），中文不會亂碼。
+    </p>
+  </div>
+</section>
+
+<section class="section">
+  <h2 class="section__title">🏅 小孩的獎狀</h2>
+  <div class="card" style="max-width: 640px;">
+    <p>
+      每個月印一張給小孩貼在冰箱上。開啟後按 <kbd>Ctrl</kbd>+<kbd>P</kbd>，
+      「目的地」選<strong>「另存為 PDF」</strong>或直接選印表機。
+    </p>
+
+    {% if children %}
+      <div class="stack stack--sm mt-md">
+        {% for child in children %}
+          {% if child.active %}
+            <div class="row row--between">
+              <div class="text-bold">{{ child.avatar }} {{ child.name }}</div>
+              <a class="btn btn--small"
+                 href="{{ url_for('admin.child_certificate', child_id=child.id) }}?{{ qs }}"
+                 target="_blank" rel="noopener">開啟獎狀</a>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="text-soft mb-0">還沒有建立小朋友。</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="section">
+  <h2 class="section__title">📦 全部資料（搬家用）</h2>
+  <div class="card" style="max-width: 640px;">
+    <p class="mb-md">
+      把所有紀錄一次打包成 ZIP。適合換電腦、搬到伺服器，
+      或只是想留一份看得懂的資料在手上。
+    </p>
+    <a class="btn btn--info" href="{{ url_for('admin.export_all_zip') }}">下載 ZIP</a>
+    <p class="text-small text-soft mt-md mb-0">
+      ZIP 裡是所有月份的 CSV 加一份說明檔。
+      <strong>同樣不能用來還原系統</strong> —— 那要用備份。
+    </p>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // 月份下拉選單同時要帶年份（跨年時月份數字會重複）。
+  (function () {
+    var select = document.getElementById("month-select");
+    var yearField = document.getElementById("year-hidden");
+    if (!select || !yearField) { return; }
+    select.addEventListener("change", function () {
+      var option = select.options[select.selectedIndex];
+      yearField.value = option.dataset.year;
+    });
+  })();
+</script>
+{% endblock %}

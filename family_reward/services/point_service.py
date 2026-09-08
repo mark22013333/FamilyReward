@@ -24,10 +24,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, time, timedelta, timezone
 
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 
 from ..exceptions import InsufficientPointsError, InvalidStateError, ValidationError
 from ..extensions import db
@@ -40,7 +41,7 @@ from ..models import (
     SourceType,
     TransactionType,
 )
-from ..utils.timezone import to_local
+from ..utils.timezone import get_tz, to_local
 from . import audit_service
 
 
@@ -248,6 +249,47 @@ def list_transactions(child_id: int, limit: int = 200) -> list[PointTransaction]
             .where(PointTransaction.child_id == child_id)
             .order_by(PointTransaction.created_at.desc(), PointTransaction.id.desc())
             .limit(limit)
+        ).scalars()
+    )
+
+
+def list_transactions_in_range(
+    child_id: int | None, start: date, end: date, tz_name: str
+) -> list[PointTransaction]:
+    """區間內的點數紀錄，**舊到新**排序（試算表由上往下讀比較自然）。
+
+    注意排序方向和 `list_transactions()` 相反 —— 那個是給畫面用的（新到舊）。
+
+    `child_id=None` 代表所有小孩。
+
+    ## 時區處理（這是最容易出錯的地方）
+
+    `created_at` 存的是 naive UTC，但使用者說的「三月」是**當地日期**。
+    例如台北時間 2026-03-01 07:00 的交易，資料庫裡存的是 2026-02-28 23:00。
+
+    所以不能直接拿當地日期去比對 `created_at`，必須先把
+    「當地 start 00:00」與「當地 end+1天 00:00」轉成 UTC 再比較。
+    """
+    tz = get_tz(tz_name)
+
+    # 當地時間的區間起訖 → 轉成資料庫存的 naive UTC
+    local_start = datetime.combine(start, time.min, tzinfo=tz)
+    local_end = datetime.combine(end + timedelta(days=1), time.min, tzinfo=tz)
+    utc_start = local_start.astimezone(timezone.utc).replace(tzinfo=None)
+    utc_end = local_end.astimezone(timezone.utc).replace(tzinfo=None)
+
+    query = db.select(PointTransaction).where(
+        PointTransaction.created_at >= utc_start,
+        PointTransaction.created_at < utc_end,
+    )
+    if child_id is not None:
+        query = query.where(PointTransaction.child_id == child_id)
+
+    return list(
+        db.session.execute(
+            query.options(selectinload(PointTransaction.child)).order_by(
+                PointTransaction.created_at.asc(), PointTransaction.id.asc()
+            )
         ).scalars()
     )
 

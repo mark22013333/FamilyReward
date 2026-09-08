@@ -314,6 +314,42 @@ def list_all_redemptions(limit: int = 200) -> list[RewardRedemption]:
     )
 
 
+def list_redemptions_in_range(
+    child_id: int | None, start: date, end: date, tz_name: str = "Asia/Taipei"
+) -> list[RewardRedemption]:
+    """區間內的兌換紀錄（舊到新，給匯出用）。
+
+    `requested_at` 存 naive UTC，所以和 point_service 一樣要做時區轉換 ——
+    使用者說的「三月」是當地日期。
+
+    `child_id=None` 代表所有小孩。純讀取。
+    """
+    from datetime import datetime, time, timedelta, timezone
+
+    from ..utils.timezone import get_tz
+
+    tz = get_tz(tz_name)
+    local_start = datetime.combine(start, time.min, tzinfo=tz)
+    local_end = datetime.combine(end + timedelta(days=1), time.min, tzinfo=tz)
+    utc_start = local_start.astimezone(timezone.utc).replace(tzinfo=None)
+    utc_end = local_end.astimezone(timezone.utc).replace(tzinfo=None)
+
+    query = db.select(RewardRedemption).where(
+        RewardRedemption.requested_at >= utc_start,
+        RewardRedemption.requested_at < utc_end,
+    )
+    if child_id is not None:
+        query = query.where(RewardRedemption.child_id == child_id)
+
+    return list(
+        db.session.execute(
+            query.options(selectinload(RewardRedemption.child)).order_by(
+                RewardRedemption.requested_at.asc(), RewardRedemption.id.asc()
+            )
+        ).scalars()
+    )
+
+
 def get_pending_reward_ids(child_id: int) -> set[int]:
     """取得小孩目前已申請、等待確認的禮物 ID，畫面用來顯示「等待中」。"""
     return set(

@@ -272,3 +272,128 @@ def test_card_progress_change_is_reversible(db, child, admin_user):
     after = point_service.get_card_progress(child.id, 10)
 
     assert before == after
+
+
+# --------------------------------------------------------------------------
+# 日期區間查詢（匯出用）
+# --------------------------------------------------------------------------
+
+
+def test_range_query_respects_local_timezone(db, child):
+    """最容易出錯的地方：created_at 存 UTC，但使用者說的月份是台北時間。
+
+    台北 2026-03-01 07:00 的交易，資料庫存的是 UTC 2026-02-28 23:00。
+    它必須算在「三月」，不能算在二月。
+    """
+    from datetime import date, datetime
+
+    from family_reward.models import PointTransaction
+
+    # 直接塞一筆 UTC 2026-02-28 23:00 的紀錄（= 台北 3/1 07:00）
+    db.session.add(
+        PointTransaction(
+            child_id=child.id,
+            transaction_type=TransactionType.EARN.value,
+            points=2,
+            source_type=SourceType.TASK_ASSIGNMENT.value,
+            source_id=9001,
+            description="台北三月一日清晨",
+            created_at=datetime(2026, 2, 28, 23, 0),
+        )
+    )
+    db.session.commit()
+
+    march = point_service.list_transactions_in_range(
+        child.id, date(2026, 3, 1), date(2026, 3, 31), "Asia/Taipei"
+    )
+    february = point_service.list_transactions_in_range(
+        child.id, date(2026, 2, 1), date(2026, 2, 28), "Asia/Taipei"
+    )
+
+    assert [t.description for t in march] == ["台北三月一日清晨"]
+    assert february == []
+
+
+def test_range_query_excludes_next_month_boundary(db, child):
+    """台北 4/1 00:30（UTC 3/31 16:30）不能算在三月。"""
+    from datetime import date, datetime
+
+    from family_reward.models import PointTransaction
+
+    db.session.add(
+        PointTransaction(
+            child_id=child.id,
+            transaction_type=TransactionType.EARN.value,
+            points=1,
+            source_type=SourceType.TASK_ASSIGNMENT.value,
+            source_id=9002,
+            description="台北四月一日凌晨",
+            created_at=datetime(2026, 3, 31, 16, 30),
+        )
+    )
+    db.session.commit()
+
+    march = point_service.list_transactions_in_range(
+        child.id, date(2026, 3, 1), date(2026, 3, 31), "Asia/Taipei"
+    )
+    april = point_service.list_transactions_in_range(
+        child.id, date(2026, 4, 1), date(2026, 4, 30), "Asia/Taipei"
+    )
+
+    assert march == []
+    assert [t.description for t in april] == ["台北四月一日凌晨"]
+
+
+def test_range_query_is_ascending(db, child, admin_user):
+    """匯出用舊到新（和畫面用的 list_transactions 相反）。"""
+    from datetime import date
+
+    for i in range(3):
+        point_service.adjust_points(
+            child_id=child.id, points=1, reason=f"第 {i} 筆", admin_id=admin_user.id
+        )
+
+    today = __import__("family_reward.utils.timezone", fromlist=["x"]).today_local(
+        "Asia/Taipei"
+    )
+    rows = point_service.list_transactions_in_range(
+        child.id, today, today, "Asia/Taipei"
+    )
+
+    assert [r.description for r in rows] == ["第 0 筆", "第 1 筆", "第 2 筆"]
+
+
+def test_range_query_all_children_when_child_id_none(db, child, other_child, admin_user):
+    from family_reward.utils.timezone import today_local
+
+    point_service.adjust_points(
+        child_id=child.id, points=1, reason="A", admin_id=admin_user.id
+    )
+    point_service.adjust_points(
+        child_id=other_child.id, points=1, reason="B", admin_id=admin_user.id
+    )
+    today = today_local("Asia/Taipei")
+
+    rows = point_service.list_transactions_in_range(None, today, today, "Asia/Taipei")
+
+    assert {r.description for r in rows} == {"A", "B"}
+
+
+def test_range_query_creates_nothing(db, child):
+    """純度：匯出查詢絕不能產生任何資料。"""
+    from datetime import date
+
+    from family_reward.models import PointTransaction
+
+    before = db.session.execute(
+        db.select(db.func.count(PointTransaction.id))
+    ).scalar_one()
+
+    point_service.list_transactions_in_range(
+        child.id, date(2020, 1, 1), date(2020, 1, 31), "Asia/Taipei"
+    )
+
+    after = db.session.execute(
+        db.select(db.func.count(PointTransaction.id))
+    ).scalar_one()
+    assert before == after

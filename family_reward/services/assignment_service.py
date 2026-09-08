@@ -182,6 +182,63 @@ def list_makeup_assignments(child_id: int, today: date) -> list[TaskAssignment]:
     )
 
 
+def list_assignments_in_range(
+    child_id: int | None, start: date, end: date
+) -> list[TaskAssignment]:
+    """區間內的任務紀錄（依日期、id 排序）。
+
+    用 `assignment_date`（本來就是當地日期），所以不需要時區轉換 ——
+    和 point_service.list_transactions_in_range 的情況不同。
+
+    `child_id=None` 代表所有小孩。**純讀取，不會產生任何紀錄。**
+    """
+    query = db.select(TaskAssignment).where(
+        TaskAssignment.assignment_date >= start,
+        TaskAssignment.assignment_date <= end,
+    )
+    if child_id is not None:
+        query = query.where(TaskAssignment.child_id == child_id)
+
+    return list(
+        db.session.execute(
+            query.options(
+                selectinload(TaskAssignment.child),
+                selectinload(TaskAssignment.task),
+            ).order_by(TaskAssignment.assignment_date.asc(), TaskAssignment.id.asc())
+        ).scalars()
+    )
+
+
+def get_top_tasks_in_range(
+    child_id: int, start: date, end: date, limit: int = 3
+) -> list[tuple[str, str, int]]:
+    """區間內最常完成的任務，回傳 [(標題, 圖示, 完成次數)]。
+
+    只計算 APPROVED（真的通過確認的），給獎狀的「最常完成的任務」用。
+    以 snapshot 欄位分組，所以任務日後改名也不影響歷史統計。
+    """
+    rows = db.session.execute(
+        db.select(
+            TaskAssignment.task_title_snapshot,
+            TaskAssignment.task_icon_snapshot,
+            func.count(TaskAssignment.id),
+        )
+        .where(
+            TaskAssignment.child_id == child_id,
+            TaskAssignment.assignment_date >= start,
+            TaskAssignment.assignment_date <= end,
+            TaskAssignment.status == AssignmentStatus.APPROVED.value,
+        )
+        .group_by(
+            TaskAssignment.task_title_snapshot, TaskAssignment.task_icon_snapshot
+        )
+        .order_by(func.count(TaskAssignment.id).desc())
+        .limit(limit)
+    ).all()
+
+    return [(str(row[0]), str(row[1]), int(row[2])) for row in rows]
+
+
 def can_make_up(assignment: TaskAssignment, today: date) -> bool:
     """這筆任務現在還能不能補送出（畫面用來決定要不要顯示按鈕）。"""
     if not assignment.can_submit:

@@ -1,0 +1,206 @@
+/* 列印樣式（獎狀用）。
+
+   為什麼用「列印版面 + 瀏覽器另存 PDF」而不是伺服器產生 PDF：
+
+   1. 零新依賴 —— 伺服器端 PDF 需要 Chromium（703 MB），
+      違背專案「解壓縮就能跑」的承諾。
+   2. emoji 能正常顯示 —— 實測 headless Chromium 產生 PDF 時
+      不會內嵌 emoji 字型，🐼 🏆 ⭐ 全部變空白；
+      而使用者自己的瀏覽器列印時是用系統的彩色 emoji 字型，完全正常。
+
+   使用方式：開啟獎狀 → Ctrl+P → 目的地選「另存為 PDF」。 */
+
+/* ---- 螢幕上的獎狀外框 ---- */
+
+.certificate {
+  background: var(--bg-surface);
+  border: 4px double var(--color-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl) var(--space-lg);
+  max-width: 700px;
+  margin: 0 auto;
+  text-align: center;
+  box-shadow: var(--shadow-md);
+}
+
+.certificate__title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-primary-dark);
+  letter-spacing: 0.1em;
+  margin-bottom: var(--space-lg);
+}
+
+.certificate__avatar {
+  font-size: 5rem;
+  line-height: 1;
+}
+
+.certificate__name {
+  font-size: 2.6rem;
+  font-weight: 800;
+  margin: var(--space-sm) 0;
+}
+
+.certificate__period {
+  font-size: 1.2rem;
+  color: var(--text-soft);
+  margin-bottom: var(--space-lg);
+}
+
+/* 全頁主角：這個月得到幾顆星星 */
+.certificate__hero {
+  background: linear-gradient(135deg, #FFF4D6, #FFE9C7);
+  border: 2px dashed var(--color-primary-dark);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin: var(--space-lg) 0;
+}
+
+.certificate__hero-label {
+  font-size: 1.1rem;
+  color: var(--text-soft);
+}
+
+.certificate__hero-number {
+  font-size: 5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--color-primary-dark);
+}
+
+.certificate__section {
+  margin: var(--space-lg) 0;
+}
+
+.certificate__section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: var(--space-sm);
+}
+
+.certificate__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  justify-content: center;
+}
+
+.certificate__badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 88px;
+}
+
+.certificate__badge-icon { font-size: 2.4rem; line-height: 1; }
+.certificate__badge-name { font-size: 0.85rem; font-weight: 700; }
+
+.certificate__signature {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-lg);
+  border-top: 1px dashed var(--border-soft);
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--space-sm);
+  font-size: 1rem;
+}
+
+.certificate__signature-line {
+  display: inline-block;
+  width: 180px;
+  border-bottom: 1px solid var(--text-main);
+}
+
+/* ---- 列印 ---- */
+
+@media print {
+  /* 導覽列、按鈕、提示都不印 */
+  .no-print,
+  .topbar,
+  .bottom-nav,
+  .admin-nav,
+  .flash-stack {
+    display: none !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  html, body {
+    background: #fff !important;
+  }
+
+  .app-main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  /* animations.css 是無條件載入的，列印時元素可能停在動畫中間的
+     變形狀態，所以全部關掉。 */
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* 讓背景色與漸層真的印出來（否則獎狀會變成白紙黑字） */
+  .certificate,
+  .certificate__hero {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .certificate {
+    box-shadow: none;
+    border-width: 3px;
+    max-width: none;
+    margin: 0;
+    padding: var(--space-lg) var(--space-md);
+    page-break-inside: avoid;
+  }
+
+  .certificate__section { page-break-inside: avoid; }
+
+  /* ---- 壓縮成一頁 ----
+     實測 20 點的集點卡（4 列印章）會把獎狀撐到第二頁，
+     所以列印時把各個區塊的尺寸調小。獎狀一定要剛好一張紙。 */
+
+  .certificate__title { font-size: 1.3rem; margin-bottom: var(--space-md); }
+  .certificate__avatar { font-size: 3.4rem; }
+  .certificate__name { font-size: 2rem; margin: 4px 0; }
+  .certificate__period { font-size: 1rem; margin-bottom: var(--space-md); }
+
+  .certificate__hero {
+    padding: var(--space-md);
+    margin: var(--space-md) 0;
+  }
+  .certificate__hero-number { font-size: 3.6rem; }
+  .certificate__hero-label { font-size: 0.95rem; }
+
+  .certificate__section { margin: var(--space-md) 0; }
+
+  /* 印章縮小，20 點也塞得下 */
+  .stamp-grid {
+    max-width: 260px;
+    gap: 5px;
+    margin: var(--space-sm) auto;
+  }
+  .stamp { font-size: 1rem; border-width: 1px; }
+
+  .certificate__badge-icon { font-size: 1.8rem; }
+  .certificate__badges { gap: var(--space-sm); }
+
+  .certificate__signature {
+    margin-top: var(--space-md);
+    padding-top: var(--space-sm);
+  }
+
+  /* 最後的微調：留一點餘裕，確保在不同瀏覽器都是一頁。
+     實測 20 點的集點卡剛好會超出 A4 幾個 px。 */
+  @page { margin: 10mm; }
+  .certificate__hero { margin: var(--space-sm) 0; }
+}

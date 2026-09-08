@@ -18,6 +18,7 @@ from .enums import (
     REPEAT_TYPE_LABELS,
     TASK_CATEGORY_LABELS,
     THEME_LABELS,
+    TRANSACTION_TYPE_LABELS,
     ActorType,
     AssignmentStatus,
     AuditAction,
@@ -68,4 +69,5 @@ __all__ = [
     "REPEAT_TYPE_LABELS",
     "TASK_CATEGORY_LABELS",
     "THEME_LABELS",
+    "TRANSACTION_TYPE_LABELS",
 ]
