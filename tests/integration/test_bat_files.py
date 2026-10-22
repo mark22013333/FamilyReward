@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-BAT_FILES = ["start.bat", "stop.bat", "backup.bat", "restore.bat", "email-backup.bat"]
+BAT_FILES = ["start.bat", "stop.bat", "backup.bat", "restore.bat", "email-backup.bat", "restart-wsl.bat"]
 
 
 @pytest.fixture(params=BAT_FILES)
