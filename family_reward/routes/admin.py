@@ -44,6 +44,7 @@ from ..services import (
     calendar_service,
     certificate_service,
     child_service,
+    email_service,
     export_service,
     point_service,
     redemption_service,
@@ -905,6 +906,8 @@ def settings_page():  # noqa: ANN201
         settings=settings,
         cloudflare_hostname=settings.cloudflare.hostname,
         current_username=current_user.username,
+        email_configured=email_service.is_configured(settings),
+        email_recipients=email_service.masked_recipients(settings),
     )
 
 
@@ -940,3 +943,53 @@ def create_backup():  # noqa: ANN201
         flash("備份沒有成功，請查看 logs\\family-reward.log。", "error")
 
     return redirect(request.referrer or url_for("admin.dashboard"))
+
+
+@admin_bp.route("/backup/email", methods=["POST"])
+def email_backup():  # noqa: ANN201
+    """把備份寄到信箱。
+
+    有帶 filename 就寄那一個既有的備份；沒帶就先建立一份新的備份再寄出。
+    """
+    form = ConfirmForm()
+    if not form.validate_on_submit():
+        flash("操作沒有成功，請再試一次。", "error")
+        return redirect(url_for("admin.settings_page"))
+
+    settings = _settings()
+    if not email_service.is_configured(settings):
+        flash("還沒有設定寄信功能，請參考 README 的「Email 寄送備份」設定 SMTP。", "error")
+        return redirect(url_for("admin.settings_page"))
+
+    filename = (request.form.get("filename") or "").strip()
+    try:
+        if filename:
+            target = email_service.resolve_backup(settings, filename)
+        else:
+            target = backup_service.create_backup(
+                settings.database.path,
+                settings.backup.directory,
+                tz_name=settings.app.timezone,
+            )
+        recipients = email_service.send_backup(settings, target)
+    except email_service.EmailError as exc:
+        flash(exc.message, "error")
+        return redirect(url_for("admin.settings_page"))
+    except (OSError, RuntimeError) as exc:
+        logger.exception("Backup before email failed: %s", exc)
+        flash("備份沒有成功，請查看 logs/family-reward.log。", "error")
+        return redirect(url_for("admin.settings_page"))
+
+    audit_service.record(
+        AuditAction.EMAIL_BACKUP,
+        actor_type=ActorType.ADMIN,
+        actor_id=current_user.id,
+        actor_name=current_user.username,
+        entity_type="DATABASE",
+        description=f"寄出備份 {target.name} 給 {len(recipients)} 位收件人",
+    )
+    from ..extensions import db
+
+    db.session.commit()
+    flash(f"備份已寄出！檔案：{target.name}（{len(recipients)} 位收件人）📧", "success")
+    return redirect(url_for("admin.settings_page"))

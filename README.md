@@ -478,7 +478,82 @@ backup\family-reward-20260906-213000.db
 
 直接複製正在寫入的 SQLite 檔案可能拿到損壞或不一致的備份。本系統使用 SQLite 官方的 **Backup API**（`sqlite3.Connection.backup()`），即使系統正在使用中也能取得一致的快照。
 
-建議偶爾把 `backup\` 裡的檔案複製到外接硬碟或雲端硬碟。
+建議偶爾把 `backup\` 裡的檔案複製到外接硬碟或雲端硬碟，或是用下面的 Email 寄送功能。
+
+### Email 寄送備份
+
+備份檔跟系統放在同一台電腦，電腦壞掉就一起不見。把備份寄到信箱，等於多一份放在別處的副本。
+`.db` 會先壓成 ZIP（通常縮到原本的 1/5 以下）再當附件寄出。
+
+**1. 設定 SMTP**（以 Gmail 為例）
+
+先開啟 Google 帳戶的兩步驟驗證，再到 <https://myaccount.google.com/apppasswords>
+建立一組「應用程式密碼」（16 個字）。**不能用平常登入的密碼。**
+
+`config\config.yaml`：
+
+```yaml
+email:
+  enabled: true
+  smtp_host: "smtp.gmail.com"
+  smtp_port: 587
+  security: "starttls"     # starttls（587）/ ssl（465）/ none
+  username: "you@gmail.com"
+  from_address: ""         # 留空就用 username
+  recipients:
+    - "you@gmail.com"
+    - "partner@example.com"
+```
+
+`.env`（密碼只放這裡，不會出現在後台、log 或稽核紀錄）：
+
+```ini
+SMTP_PASSWORD=<你的 16 字應用程式密碼>
+```
+
+Google 顯示的應用程式密碼是四個字一組、中間有空白，直接貼上即可，系統會自動去掉空白。
+
+改完重新啟動系統。
+
+**2. 從後台寄出**
+
+**⚙️ 設定 → 💾 備份** 會多出：
+
+- **📧 備份並寄到信箱**：先建立一份新備份再寄出
+- 備份清單每一列的 **📧 寄出**：寄出那一份既有的備份
+
+每次寄出都會寫進稽核紀錄（只記檔名與收件人數，不記信箱）。
+
+**3. 定期自動寄出**
+
+- **Windows**：工作排程器 → 建立基本工作 → 動作選「啟動程式」，
+  程式填 `email-backup.bat`，引數填 `/nopause`，起始位置填專案資料夾。
+- **Linux／WSL（systemd）**：建立 timer，例如每週日早上 9 點：
+
+  ```ini
+  # /etc/systemd/system/familyreward-email-backup.service
+  [Service]
+  Type=oneshot
+  User=cheng
+  WorkingDirectory=/home/cheng/family-reward
+  ExecStart=/home/cheng/family-reward/.venv/bin/python scripts/email_backup.py
+
+  # /etc/systemd/system/familyreward-email-backup.timer
+  [Timer]
+  OnCalendar=Sun *-*-* 09:00:00
+  Persistent=true
+
+  [Install]
+  WantedBy=timers.target
+  ```
+
+  ```bash
+  sudo systemctl enable --now familyreward-email-backup.timer
+  ```
+
+寄送失敗時腳本回傳 1，結果也會寫進 `logs/family-reward.log`。
+
+> 備份裡有小孩的資料與點數紀錄（密碼與 PIN 是雜湊過的），請只寄給家人自己的信箱。
 
 ---
 
@@ -643,6 +718,7 @@ family-reward/
 ├─ stop.bat                   停止
 ├─ backup.bat                 備份資料庫
 ├─ restore.bat                還原資料庫
+├─ email-backup.bat           備份並寄到信箱
 ├─ launcher.py                啟動流程（Migration / Waitress / Cloudflare / PID）
 ├─ app.py                     WSGI 進入點
 ├─ requirements.txt
@@ -681,7 +757,7 @@ family-reward/
 │  └─ js/     app / task / reward / calendar / animations
 │
 ├─ migrations/                Alembic
-├─ scripts/                   backup_db.py / restore_db.py
+├─ scripts/                   backup_db.py / restore_db.py / email_backup.py
 ├─ tests/
 │  ├─ unit/  integration/  e2e/
 │
@@ -731,6 +807,7 @@ SQLite (WAL)
 | `notification_service` | 小孩通知（慶祝畫面只播一次） |
 | `achievement_service` | 成就解鎖 |
 | `backup_service` | SQLite 安全備份 |
+| `email_service` | 把備份壓成 ZIP 用 SMTP 寄出 |
 | `admin_service` | 管理員帳號、密碼 |
 
 ### Admin 與 Child 權限隔離
@@ -1305,7 +1382,8 @@ YAML 對縮排很敏感。常見錯誤：
    `start.bat` 已經預留 `runtime\python.exe` 的優先偵測邏輯，但沒有實際打包免安裝的 Python runtime。
 
 9. **備份沒有自動排程**
-   需要手動執行 `backup.bat` 或從後台按「立即備份」。超過設定天數會在後台提醒，但不會自動備份。若想自動化，可用 Windows 工作排程器定時執行 `backup.bat`。
+   需要手動執行 `backup.bat` 或從後台按「立即備份」。超過設定天數會在後台提醒，但不會自動備份。若想自動化，可用 Windows 工作排程器定時執行 `backup.bat`，
+   或排程 `email-backup.bat /nopause` 順便寄到信箱（見 [Email 寄送備份](#email-寄送備份)）。
 
 ---
 

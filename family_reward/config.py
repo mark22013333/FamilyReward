@@ -95,6 +95,20 @@ class BackupConfig:
 
 
 @dataclass
+class EmailConfig:
+    """寄送備份用的 SMTP 設定。密碼不放這裡，放 .env 的 SMTP_PASSWORD。"""
+
+    enabled: bool = False
+    smtp_host: str = ""
+    smtp_port: int = 587
+    security: str = "starttls"  # starttls / ssl / none
+    username: str = ""
+    from_address: str = ""
+    recipients: list[str] = field(default_factory=list)
+    timeout_seconds: int = 30
+
+
+@dataclass
 class UiConfig:
     sound_enabled: bool = False
 
@@ -112,10 +126,12 @@ class Settings:
     cloudflare: CloudflareConfig = field(default_factory=CloudflareConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     backup: BackupConfig = field(default_factory=BackupConfig)
+    email: EmailConfig = field(default_factory=EmailConfig)
     ui: UiConfig = field(default_factory=UiConfig)
 
     secret_key: str = ""
     admin_initial_password: str = ""
+    smtp_password: str = ""
     source_path: Path | None = None
 
     @property
@@ -178,7 +194,16 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
     cf_raw = _section(raw, "cloudflare")
     log_raw = _section(raw, "logging")
     backup_raw = _section(raw, "backup")
+    email_raw = _section(raw, "email")
     ui_raw = _section(raw, "ui")
+
+    recipients_raw = email_raw.get("recipients") or []
+    if isinstance(recipients_raw, str):
+        # 允許只寫一個信箱字串，或用逗號分隔
+        recipients_raw = recipients_raw.split(",")
+    if not isinstance(recipients_raw, list):
+        raise ConfigError("config.yaml 的 `email.recipients` 應為信箱清單。")
+    recipients = [str(item).strip() for item in recipients_raw if str(item).strip()]
 
     settings = Settings(
         server=ServerConfig(
@@ -224,11 +249,23 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
             directory=_resolve(str(backup_raw.get("directory", "./backup"))),
             reminder_days=int(backup_raw.get("reminder_days", 7)),
         ),
+        email=EmailConfig(
+            enabled=bool(email_raw.get("enabled", False)),
+            smtp_host=str(email_raw.get("smtp_host", "") or "").strip(),
+            smtp_port=int(email_raw.get("smtp_port", 587)),
+            security=str(email_raw.get("security", "starttls") or "starttls").strip().lower(),
+            username=str(email_raw.get("username", "") or "").strip(),
+            from_address=str(email_raw.get("from_address", "") or "").strip(),
+            recipients=recipients,
+            timeout_seconds=int(email_raw.get("timeout_seconds", 30)),
+        ),
         ui=UiConfig(
             sound_enabled=bool(ui_raw.get("sound_enabled", False)),
         ),
         secret_key=os.environ.get("FLASK_SECRET_KEY", "").strip(),
         admin_initial_password=os.environ.get("ADMIN_INITIAL_PASSWORD", "").strip(),
+        # Gmail 應用程式密碼是四個字一組、中間帶空白，SMTP 登入時要去掉
+        smtp_password=os.environ.get("SMTP_PASSWORD", "").replace(" ", "").strip(),
         source_path=path if path.exists() else None,
     )
 
@@ -254,6 +291,27 @@ def validate_settings(settings: Settings) -> None:
         errors.append("admin.initial_username 不可為空白。")
     if settings.backup.reminder_days <= 0:
         errors.append("backup.reminder_days 必須大於 0。")
+
+    # email 只在 enabled 時才檢查，沒用到寄信功能的人不受影響
+    email = settings.email
+    if email.enabled:
+        if not email.smtp_host:
+            errors.append("email.enabled 為 true 時必須設定 email.smtp_host。")
+        if not (1 <= email.smtp_port <= 65535):
+            errors.append(f"email.smtp_port 必須介於 1 ~ 65535，目前是 {email.smtp_port}。")
+        if email.security not in ("starttls", "ssl", "none"):
+            errors.append(
+                f"email.security 只能是 starttls / ssl / none，目前是 {email.security}。"
+            )
+        if not email.recipients:
+            errors.append("email.enabled 為 true 時必須設定至少一個 email.recipients。")
+        for address in [email.from_address or email.username, *email.recipients]:
+            if address and "@" not in address:
+                errors.append(f"信箱格式不正確：{address}")
+        if not (email.from_address or email.username):
+            errors.append("請設定 email.from_address（寄件人信箱）。")
+        if email.timeout_seconds <= 0:
+            errors.append("email.timeout_seconds 必須大於 0。")
 
     try:
         from zoneinfo import ZoneInfo

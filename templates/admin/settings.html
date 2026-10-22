@@ -154,10 +154,31 @@
 <section class="section">
   <h2 class="section__title">💾 備份</h2>
   <div class="card">
-    <form method="post" action="{{ url_for('admin.create_backup') }}" data-once>
-      {{ confirm_form.hidden_tag() }}
-      <button class="btn btn--info" type="submit" data-busy-text="備份中…">立即備份</button>
-    </form>
+    <div style="display: flex; flex-wrap: wrap; gap: var(--space-sm);">
+      <form method="post" action="{{ url_for('admin.create_backup') }}" data-once>
+        {{ confirm_form.hidden_tag() }}
+        <button class="btn btn--info" type="submit" data-busy-text="備份中…">立即備份</button>
+      </form>
+      {% if email_configured %}
+        <form method="post" action="{{ url_for('admin.email_backup') }}" data-once>
+          {{ confirm_form.hidden_tag() }}
+          <button class="btn btn--info" type="submit" data-busy-text="寄送中…">
+            📧 備份並寄到信箱
+          </button>
+        </form>
+      {% endif %}
+    </div>
+
+    {% if email_configured %}
+      <p class="text-small text-soft mt-md mb-0">
+        備份會壓成 ZIP 寄給：{{ email_recipients | join('、') }}
+      </p>
+    {% else %}
+      <p class="text-small text-soft mt-md mb-0">
+        想把備份寄到信箱（異地保存）？在 <code>config/config.yaml</code> 設定
+        <code>email</code> 區段，並在 <code>.env</code> 填入 <code>SMTP_PASSWORD</code> 後重新啟動。
+      </p>
+    {% endif %}
 
     {% if backups %}
       <div class="table-wrap mt-md">
@@ -168,6 +189,7 @@
               <th scope="col">檔名</th>
               <th scope="col">時間</th>
               <th scope="col">大小</th>
+              {% if email_configured %}<th scope="col"><span class="visually-hidden">寄出</span></th>{% endif %}
             </tr>
           </thead>
           <tbody>
@@ -176,6 +198,16 @@
                 <td class="text-small">{{ backup.path.name }}</td>
                 <td class="text-small">{{ backup.display_time }}</td>
                 <td class="text-small">{{ backup.size_mb }} MB</td>
+                {% if email_configured %}
+                  <td>
+                    <form method="post" action="{{ url_for('admin.email_backup') }}" data-once>
+                      {{ confirm_form.hidden_tag() }}
+                      <input type="hidden" name="filename" value="{{ backup.path.name }}">
+                      <button class="btn btn--small btn--ghost" type="submit" data-busy-text="寄送中…"
+                              aria-label="寄出 {{ backup.path.name }}">📧 寄出</button>
+                    </form>
+                  </td>
+                {% endif %}
               </tr>
             {% endfor %}
           </tbody>
@@ -214,6 +246,14 @@
               <td>{{ settings.security.session_timeout_hours }} 小時</td></tr>
           <tr><th scope="row">備份提醒</th>
               <td>超過 {{ settings.backup.reminder_days }} 天</td></tr>
+          <tr><th scope="row">備份寄送信箱</th>
+              <td>
+                {% if email_configured %}
+                  {{ email_recipients | join('、') }}（{{ settings.email.smtp_host }}）
+                {% else %}
+                  未設定
+                {% endif %}
+              </td></tr>
           {# tunnel 可能由 start.bat 啟動（enabled），也可能是註冊成
              Windows 服務的儀表板管理型（只設定 hostname）。兩種都要顯示。 #}
           <tr><th scope="row">公開網址</th>
