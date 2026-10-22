@@ -79,5 +79,23 @@ backup:
   directory: "./backup"
   reminder_days: 7      # 超過幾天沒備份就在後台提醒
 
+email:
+  # ★ 把備份寄到信箱（異地保存）。設定好之後：
+  #   - 後台「⚙️ 設定 → 💾 備份」會出現「📧 備份並寄到信箱」
+  #   - 可以排程執行 email-backup.bat /nopause（Windows）
+  #     或 scripts/email_backup.py（Linux），定期自動寄出
+  #
+  #   SMTP 密碼「不要」寫在這裡，請放 .env 的 SMTP_PASSWORD。
+  #   Gmail 要先開啟兩步驟驗證，再到 https://myaccount.google.com/apppasswords
+  #   建立「應用程式密碼」（16 個字），填進 SMTP_PASSWORD。
+  enabled: false
+  smtp_host: "smtp.gmail.com"
+  smtp_port: 587
+  security: "starttls"   # starttls（587）/ ssl（465）/ none
+  username: ""           # SMTP 登入帳號，Gmail 就是完整信箱
+  from_address: ""       # 寄件人；留空就用 username
+  recipients:            # 收件人，可以多個
+    - ""
+
 ui:
   sound_enabled: false  # 第一版不播音效
