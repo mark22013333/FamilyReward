@@ -18,9 +18,10 @@ from flask import (
     redirect,
     render_template,
     request,
+    session,
     url_for,
 )
-from flask_login import current_user
+from flask_login import current_user, logout_user
 
 from ..exceptions import AppError
 from ..forms import (
@@ -31,6 +32,7 @@ from ..forms import (
     PointAdjustmentForm,
     PointsPerCardForm,
     RejectForm,
+    RestoreUploadForm,
     RewardForm,
     TaskForm,
 )
@@ -48,6 +50,7 @@ from ..services import (
     export_service,
     point_service,
     redemption_service,
+    restore_service,
     reward_service,
     settings_service,
     task_service,
@@ -908,6 +911,7 @@ def settings_page():  # noqa: ANN201
         current_username=current_user.username,
         email_configured=email_service.is_configured(settings),
         email_recipients=email_service.masked_recipients(settings),
+        restore_form=RestoreUploadForm(),
     )
 
 
@@ -993,3 +997,45 @@ def email_backup():  # noqa: ANN201
     db.session.commit()
     flash(f"備份已寄出！檔案：{target.name}（{len(recipients)} 位收件人）📧", "success")
     return redirect(url_for("admin.settings_page"))
+
+
+@admin_bp.route("/restore", methods=["POST"])
+def restore_upload():  # noqa: ANN201
+    """上傳備份並立即還原。
+
+    還原後資料庫裡的管理員可能已經不同（帳號、密碼、id 都可能變），
+    所以一律登出，請家長用「備份裡的」帳號密碼重新登入。
+    """
+    form = RestoreUploadForm()
+    if not form.validate_on_submit():
+        for errors in form.errors.values():
+            flash(errors[0], "error")
+            break
+        else:
+            flash("操作沒有成功，請再試一次。", "error")
+        return redirect(url_for("admin.settings_page"))
+
+    if not current_user.verify_password(form.current_password.data or ""):
+        flash("目前的密碼不正確，沒有進行還原。", "error")
+        return redirect(url_for("admin.settings_page"))
+
+    actor_name = current_user.username
+    try:
+        result = restore_service.restore_from_file_storage(
+            current_app._get_current_object(),  # type: ignore[attr-defined]
+            form.backup_file.data,
+            actor_name=actor_name,
+        )
+    except restore_service.RestoreError as exc:
+        flash(exc.message, "error")
+        return redirect(url_for("admin.settings_page"))
+
+    logout_user()
+    session.clear()
+
+    message = f"還原完成！已載入 {result.source_name}（{result.child_count} 位小朋友）。"
+    if result.safety_backup_name:
+        message += f" 還原前的資料已備份為 {result.safety_backup_name}。"
+    message += " 請用備份裡的管理員帳號密碼重新登入 🔐"
+    flash(message, "success")
+    return redirect(url_for("auth.admin_login"))

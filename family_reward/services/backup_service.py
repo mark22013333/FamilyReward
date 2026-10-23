@@ -49,6 +49,11 @@ def create_backup(
     backup_dir.mkdir(parents=True, exist_ok=True)
     timestamp = now_local(tz_name).strftime("%Y%m%d-%H%M%S")
     target = backup_dir / f"{prefix}{BACKUP_PREFIX}{timestamp}{BACKUP_SUFFIX}"
+    # 檔名只到秒；同一秒內備份兩次（例如連續還原）不能覆蓋掉前一份
+    counter = 1
+    while target.exists():
+        target = backup_dir / f"{prefix}{BACKUP_PREFIX}{timestamp}-{counter}{BACKUP_SUFFIX}"
+        counter += 1
 
     source = sqlite3.connect(str(db_path), timeout=5.0)
     try:

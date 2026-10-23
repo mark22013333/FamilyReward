@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileAllowed, FileField, FileRequired
 from wtforms import (
     BooleanField,
     DateField,
@@ -230,3 +231,23 @@ class ConfirmForm(FlaskForm):
     """只需要 CSRF 保護的簡單確認表單（批准 / 停用 / 備份等）。"""
 
     submit = SubmitField("確認")
+
+
+class RestoreUploadForm(FlaskForm):
+    """上傳備份並還原。會覆蓋目前所有資料，所以要再輸入一次密碼。"""
+
+    backup_file = FileField(
+        "備份檔（.db 或寄到信箱的 .zip）",
+        validators=[
+            FileRequired(message="請選擇要還原的備份檔"),
+            FileAllowed(["db", "zip"], message="只能上傳 .db 或 .zip 備份檔"),
+        ],
+    )
+    current_password = PasswordField(
+        "目前的管理員密碼", validators=[DataRequired(message="請輸入目前的密碼")]
+    )
+    confirm = BooleanField(
+        "我了解目前的資料會被備份檔取代",
+        validators=[DataRequired(message="請勾選確認")],
+    )
+    submit = SubmitField("上傳並還原")
