@@ -94,6 +94,8 @@ def _configure_flask(app: Flask, settings: Settings) -> None:
         PERMANENT_SESSION_LIFETIME=timedelta(hours=settings.security.session_timeout_hours),
         WTF_CSRF_TIME_LIMIT=None,
         JSON_AS_ASCII=False,
+        # 唯一的上傳是「還原備份」，上限跟 restore_service 一致（再留一點表單欄位的空間）
+        MAX_CONTENT_LENGTH=51 * 1024 * 1024,
         APP_NAME=settings.app.name,
         TIMEZONE=settings.app.timezone,
         DEBUG=settings.app.debug and not settings.is_production,

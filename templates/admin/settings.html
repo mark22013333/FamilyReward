@@ -219,8 +219,51 @@
 
     <p class="text-small text-soft mt-md mb-0">
       備份使用 SQLite 官方 Backup API，即使系統正在使用中也能安全備份。
-      還原請關閉程式後執行 <code>restore.bat</code>。
+      要還原請使用下面的「從備份還原」。
     </p>
+  </div>
+</section>
+
+<section class="section">
+  <h2 class="section__title">♻️ 從備份還原</h2>
+  <div class="card" style="max-width: 480px;">
+    <div class="alert alert--warning mb-md">
+      <span aria-hidden="true">⚠️</span>
+      <div>
+        還原會用備份檔<strong>取代目前所有的資料</strong>（小孩、任務、點數、帳號都會變成備份當時的樣子）。
+        還原前系統會自動把現在的資料備份成 <code>pre-restore-*</code>，後悔還能再還原回來。
+      </div>
+    </div>
+
+    <form method="post" action="{{ url_for('admin.restore_upload') }}"
+          enctype="multipart/form-data" novalidate data-once>
+      {{ restore_form.hidden_tag() }}
+      <div class="form-field">
+        <label class="form-label" for="backup_file">{{ restore_form.backup_file.label.text }}</label>
+        <input class="form-input" type="file" id="backup_file" name="backup_file"
+               accept=".db,.zip" required>
+        <div class="form-hint">「立即備份」產生的 .db，或「寄到信箱」收到的 .zip 都可以。</div>
+      </div>
+      <div class="form-field">
+        <label class="form-label" for="restore_current_password">
+          {{ restore_form.current_password.label.text }}
+        </label>
+        <input class="form-input" type="password" id="restore_current_password"
+               name="current_password" autocomplete="current-password" required>
+      </div>
+      <div class="form-field">
+        <label class="checkbox-row">
+          <input type="checkbox" name="confirm" value="y" required>
+          <span>{{ restore_form.confirm.label.text }}</span>
+        </label>
+      </div>
+      <button class="btn btn--danger" type="submit" data-busy-text="還原中…">
+        {{ restore_form.submit.label.text }}
+      </button>
+      <p class="text-small text-soft mt-md mb-0">
+        還原完成後會自動登出，請用<strong>備份裡的</strong>管理員帳號密碼重新登入。
+      </p>
+    </form>
   </div>
 </section>
 

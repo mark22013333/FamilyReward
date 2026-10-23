@@ -104,9 +104,8 @@ def build_message(settings: Settings, backup_path: Path) -> EmailMessage:
 
 如何還原
 --------
-1. 停止系統（stop.bat，或 Linux 上 systemctl stop）
-2. 解壓縮附件，把 .db 檔放進專案的 backup 資料夾
-3. 執行 restore.bat（或 scripts/restore_db.py），選擇這個備份
+登入家長後台 →「⚙️ 設定 → ♻️ 從備份還原」，直接上傳這個 ZIP 附件即可，
+不用解壓縮，也不用停止系統。
 
 注意
 ----
